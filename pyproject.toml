@@ -1,0 +1,28 @@
+[project]
+name = "chatapp"
+version = "0.1"
+license = {file = "LICENSE"}
+authors = [
+  { name="Vita-bit", email="mocekvi24@sps-prosek.cz" },
+]
+description = "Chatting python app"
+readme = "README.md"
+requires-python = ">=3.11"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Windows",
+]
+
+dynamic = ["dependencies"]
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.urls]
+Homepage = "https://github.com/Vita-bit/Chat-app"
+Issues = "https://github.com/Vita-bit/Chat-app/issues"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+build-backend = "setuptools.build_meta"
