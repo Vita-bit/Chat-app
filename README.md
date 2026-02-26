@@ -18,4 +18,4 @@ Basic python chatting app where messages are sent to a server you can host anywh
     - asyncio
     - sounddevice
     - sqlite3
-    - subprocesses
+    - pyngrok
