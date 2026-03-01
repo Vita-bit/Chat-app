@@ -24,8 +24,6 @@ def main():
         length_bytes = sock.recv(4)
         length = int.from_bytes(length_bytes, "big")
         data = b""
-        if len(data) == 0:
-            return None
         while len(data) < length:
             chunk = sock.recv(length - len(data))
             if not chunk:
@@ -45,6 +43,7 @@ def main():
                 if msg is None:
                     print("Disconnected from the server")
                     running = False
+                    break
                 msg_type = msg.get("type")
                 if msg_type == "success" or msg_type == "error":
                     print(f"{msg.get('content')}")
@@ -59,7 +58,7 @@ def main():
                     print(f"Entered chat with id {msg.get('chat_id')}")
                     current_chat_id = msg.get('chat_id')
                     for m in msg.get("messages"):
-                        print(f"{m['sender']} : {m['content']},   {m['sent_at']}")
+                        print(f"{m['sender']} : {m['content']}   {m['sent_at']}")
                 elif msg_type == "new_msg":
                     chat_id = msg.get("chat_id")
                     if chat_id == current_chat_id:

@@ -183,7 +183,7 @@ def main():
                                 dbconn.commit()
                                 with clients_lock:
                                     clients[username] = conn
-                                    print(f"Client {username} connected")
+                                print(f"Client {username} connected")
                                 send_json(conn, {"type" : "success", "content" : "Created user"})
                 else:
                     json_type = message.get("type")
