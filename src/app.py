@@ -58,7 +58,7 @@ def main():
                     print(f"Entered chat with id {msg.get('chat_id')}")
                     current_chat_id = msg.get('chat_id')
                     for m in msg.get("messages"):
-                        print(f"{m['sender']} : {m['content']},   {m['sent_at']}")
+                        print(f"{m['sender']} : {m['content']}   {m['sent_at']}")
                 elif msg_type == "new_msg":
                     chat_id = msg.get("chat_id")
                     if chat_id == current_chat_id:
