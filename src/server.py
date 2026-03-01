@@ -197,6 +197,7 @@ def main():
         except Exception as e:
             print(f"Error with client {username}: {e}")
         finally:
+            send_json(clients[username], {"type" : "disconnect"})
             if username:
                 with clients_lock:
                     if username in clients:

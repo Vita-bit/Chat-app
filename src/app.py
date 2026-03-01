@@ -35,7 +35,8 @@ def main():
             try:
                 msg = recv_json(s)
                 if msg is None:
-                    print("Disconnected from server")
+                    clear_console()
+                    print("Disconnected from the server")
                     break
                 msg_type = msg.get("type")
                 if msg_type == "success" or msg_type == "error":
@@ -61,6 +62,10 @@ def main():
                 elif msg_type == "closed_chat":
                     clear_console()
                     print("Successfully closed chat")
+                elif msg_type == "disconnect":
+                    clear_console()
+                    print("Disconnected from the server")
+                    break
             except Exception as e:
                 print("Error receiving message:", e)
                 break
@@ -74,7 +79,6 @@ def main():
     while True:
         comm = input("")
         if comm == "help":
-            clear_console()
             print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console")
         else:
             args = comm.split(" ")
