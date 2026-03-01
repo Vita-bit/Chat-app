@@ -4,7 +4,7 @@ import threading
 import os
 
 def main():
-    HOST = input("Enter server's public / private IP adress: ")
+    HOST = input("Enter server's public / private IP address: ")
     PORT = input("Enter the port the server's running on: ")
     current_chat_id = None
     running = True
@@ -13,13 +13,19 @@ def main():
     s.connect((HOST, int(PORT)))
 
     def send_json(sock, message):
-        data = json.dumps(message).encode()
-        sock.sendall(len(data).to_bytes(4, "big"))
-        sock.sendall(data)
+        try:
+            data = json.dumps(message).encode()
+            sock.sendall(len(data).to_bytes(4, "big"))
+            sock.sendall(data)
+        except (ConnectionResetError, BrokenPipeError):
+            return False
+        return True
     def recv_json(sock):
         length_bytes = sock.recv(4)
         length = int.from_bytes(length_bytes, "big")
         data = b""
+        if len(data) == 0:
+            return None
         while len(data) < length:
             chunk = sock.recv(length - len(data))
             if not chunk:
@@ -64,7 +70,7 @@ def main():
                     clear_console()
                     print("Successfully closed chat")
                 elif msg_type == "disconnect":
-                    print("Disconnected from the server")
+                    print(f"Disconnected from the server - {msg.get('content')}")
                     running = False
             except Exception as e:
                 print("Error receiving message:", e)
@@ -77,9 +83,9 @@ def main():
     print("\nType 'help' for commands")
 
     while running:
-        comm = input("")
         if not running:
             break
+        comm = input("").strip()
         if comm == "help":
             print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console")
         else:
