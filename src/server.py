@@ -86,10 +86,19 @@ def main():
     def open_chat(chat_id, username):
         with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
+            cur.execute("select id from users where username = ?", (username,))
+            user_row = cur.fetchone()
+            if not user_row:
+                send_json(clients[username], {"type": "error", "content": "Invalid user"})
+                return
+            user_id = user_row[0]
             cur.execute("select id from chats where id = ?", (chat_id,))
-            chat_exists = cur.fetchone()
-            if not chat_exists:
+            if not cur.fetchone():
                 send_json(clients[username], {"type": "error", "content": f"Chat {chat_id} does not exist"})
+                return
+            cur.execute("select 1 from chat_users where chat_id = ? and user_id = ?", (chat_id, user_id))
+            if not cur.fetchone():
+                send_json(clients[username], {"type": "error", "content": "You are not in this chat"})
                 return
             cur.execute("select m.id, u.username as sender, m.content, m.file_name, m.sent_at from messages m join users u on m.sender_id = u.id where m.chat_id = ? order by m.sent_at desc limit 50", (chat_id,))
             rows = cur.fetchall()
