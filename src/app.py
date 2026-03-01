@@ -7,6 +7,7 @@ def main():
     HOST = input("Enter server's public / private IP adress: ")
     PORT = input("Enter the port the server's running on: ")
     current_chat_id = None
+    running = True
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, int(PORT)))
@@ -31,12 +32,13 @@ def main():
         else:
             os.system('clear')
     def listener():
-        while True:
+        nonlocal running, current_chat_id
+        while running:
             try:
                 msg = recv_json(s)
                 if msg is None:
                     print("Disconnected from the server")
-                    break
+                    running = False
                 msg_type = msg.get("type")
                 if msg_type == "success" or msg_type == "error":
                     print(f"{msg.get('content')}")
@@ -63,10 +65,10 @@ def main():
                     print("Successfully closed chat")
                 elif msg_type == "disconnect":
                     print("Disconnected from the server")
-                    break
+                    running = False
             except Exception as e:
                 print("Error receiving message:", e)
-                break
+                running = False
     threading.Thread(target=listener, daemon=True).start()
 
     username = input("Enter your username: ")
@@ -74,8 +76,10 @@ def main():
     send_json(s, {"type": "login", "username": username, "password": password})
     print("\nType 'help' for commands")
 
-    while True:
+    while running:
         comm = input("")
+        if not running:
+            break
         if comm == "help":
             print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console")
         else:
@@ -111,7 +115,7 @@ def main():
             elif args[0] == "close_chat":
                 send_json(s, {"type" : "close_chat", "user" : username})
             elif args[0] == "logout":
-                break
+                running = False
             elif args[0] == "clear":
                 clear_console()
             else:

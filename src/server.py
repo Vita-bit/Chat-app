@@ -202,6 +202,10 @@ def main():
             if username:
                 with clients_lock:
                     if username in clients:
+                        try:
+                            send_json(clients[username], {"type": "disconnect"})
+                        except Exception:
+                            pass
                         del clients[username]
                     if username in current_chats:
                         del current_chats[username]
