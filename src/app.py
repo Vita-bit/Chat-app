@@ -1,6 +1,7 @@
 import socket
 import json
 import threading
+import os
 
 def main():
     HOST = input("Enter server's public / private IP adress: ")
@@ -24,6 +25,11 @@ def main():
                 break
             data += chunk
         return json.loads(data.decode())
+    def clear_console():
+        if os.name == 'nt':
+            os.system('cls')
+        else:
+            os.system('clear')
     def listener():
         while True:
             try:
@@ -36,9 +42,11 @@ def main():
                     print(f"{msg.get('content')}")
                 elif msg_type == "chats_got":
                     chats = msg.get("chats")
+                    clear_console()
                     for c in chats:
                         print(f"{c['name']} [{c['id']}]")
                 elif msg_type == "chat_open":
+                    clear_console()
                     print(f"Entered chat with id {msg.get('chat_id')}")
                     current_chat_id = msg.get('chat_id')
                     for m in msg.get("messages"):
