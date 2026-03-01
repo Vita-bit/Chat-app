@@ -1,34 +1,15 @@
 import socket
-import threading
+import json
 
-HOST = input("Enter server url: ")
-PORT = 1000
+HOST = input("Enter server's public IP adress: ")
+PORT = input("Enter the port the server's running on: ")
 
-username = input("Enter your username: ")
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, int(PORT)))
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect((HOST, PORT))
+    message = {"username": "Alice", "message": "Hello!"}
+    s.sendall((json.dumps(message) + "\n").encode())
 
-def receive():
-    while True:
-        try:
-            message = client.recv(1024).decode('utf-8')
-            if message == "NICK":
-                client.send(username.encode('utf-8'))
-            else:
-                print(message)
-        except:
-            print("Error")
-            client.close()
-            break
-
-def send():
-    while True:
-        message = f"{username}: {input('')}"
-        client.send(message.encode('utf-8'))
-
-receive_thread = threading.Thread(target=receive)
-receive_thread.start()
-
-write_thread = threading.Thread(target=send)
-write_thread.start()
+    data = s.recv(1024).decode()
+    response = json.loads(data.strip())
+    print("Server response:", response)
