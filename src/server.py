@@ -189,6 +189,14 @@ def main():
                     elif json_type == "close_chat":
                         current_chats[message.get('user')] = None
                         send_json(clients[message.get('user')], {"type" : "closed_chat"})
+                    elif json_type == "logout":
+                        with clients_lock:
+                            if message.get('user') in clients:
+                                del clients[message.get('user')]
+                            if message.get('user') in current_chats:
+                                del current_chats[message.get('user')]
+                        conn.close()
+                        print(f"Client {message.get('user')} disconnected")
         except Exception as e:
             print(f"Error with client {username}: {e}")
         finally:
