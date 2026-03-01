@@ -62,6 +62,7 @@ def main():
             if creator_id not in user_ids:
                 cur.execute("insert into chat_users (chat_id, user_id) values (?,?)",(chat_id, creator_id))
             dbconn.commit()
+            send_json(conn, {"type" : "success", "content" : "Successfully created chat"})
     def get_chats(user):
         with sqlite3.connect("chatapp.db") as dbconn:
             dbconn.execute("pragma foreign_keys = ON")
@@ -97,15 +98,15 @@ def main():
             sender_id = cur.fetchone()[0]
             cur.execute("insert into messages (chat_id, sender_id, content) VALUES (?, ?, ?)",(chat_id, sender_id, content))
             dbconn.commit()
-            cur.execute("select sent_at from messages where id = ?",(cur.lastrowid,))
+            cur.execute("select content, sent_at from messages where id = ?",(cur.lastrowid,))
             sent_at_row = cur.fetchone()
-            sent_at = sent_at_row[0] if sent_at_row else None
+            message_to_send = {"sender": user, "content": sent_at_row[0], "sent_at": sent_at_row[1]}
             cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?",(chat_id,))
             users = cur.fetchall()
             cur.execute("select name from chats where id = ?", (chat_id,))
             chat_name_row = cur.fetchone()
             chat_name = chat_name_row[0] if chat_name_row and chat_name_row[0] else None
-            msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": content, "chat_name" : chat_name, "sent_at" : sent_at}
+            msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": message_to_send.get('content'), "chat_name" : chat_name, "sent_at" : message_to_send.get('sent_at')}
             for u in users:
                 target_user = u[0]
                 if target_user in clients:

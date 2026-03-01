@@ -71,6 +71,7 @@ def main():
     while True:
         comm = input("")
         if comm == "help":
+            clear_console()
             print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat")
         else:
             args = comm.split(" ")
