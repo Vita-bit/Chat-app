@@ -75,7 +75,7 @@ def main():
         comm = input("")
         if comm == "help":
             clear_console()
-            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app")
+            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console")
         else:
             args = comm.split(" ")
             if args[0] == "create_chat":
@@ -110,5 +110,9 @@ def main():
                 send_json(s, {"type" : "close_chat", "user" : username})
             elif args[0] == "logout":
                 send_json(s, {"type" : "logout", "user" : username})
+            elif args[0] == "clear":
+                clear_console()
+            else:
+                print("Invalid command")
 
 main()
