@@ -19,13 +19,13 @@ dynamic = ["dependencies"]
 dependencies = {file = ["requirements.txt"]}
 
 [project.scripts]
-app_launch = "src.app:main"
+start = "src.app:main"
+serverstart = "src.server:main"
 
 [project.urls]
 Homepage = "https://github.com/Vita-bit/Chat-app"
 Issues = "https://github.com/Vita-bit/Chat-app/issues"
 
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"

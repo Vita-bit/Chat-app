@@ -1,1 +1,91 @@
+import socket
+import json
+import threading
 
+def main():
+    HOST = input("Enter server's public IP adress: ")
+    PORT = input("Enter the port the server's running on: ")
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((HOST, PORT))
+    print("Type 'help' for commands")
+
+    def send_json(sock, message):
+        data = json.dumps(message).encode()
+        sock.sendall(len(data).to_bytes(4, "big"))
+        sock.sendall(data)
+    def recv_json(sock):
+        length_bytes = sock.recv(4)
+        length = int.from_bytes(length_bytes, "big")
+        data = b""
+        while len(data) < length:
+            chunk = sock.recv(length - len(data))
+            if not chunk:
+                break
+            data += chunk
+        return json.loads(data.decode())
+    def listener():
+        while True:
+            try:
+                msg = recv_json(s)
+                if msg is None:
+                    print("Disconnected from server")
+                    break
+                msg_type = msg.get("type")
+                if msg_type == "success" or msg_type == "error":
+                    print(f"\n{msg.get('content')}")
+                elif msg_type == "chats_got":
+                    chats = msg.get("chats")
+                    for c in chats:
+                        print(f"{c['name']} [{c['id']}]")
+                elif msg_type == "chat_open":
+                    print(f"Entered chat with id {msg.get('chat_id')}")
+                    for m in msg.get("messages"):
+                        print(f"{m['sender']} : {m['content']},   {m['sent_at']}")
+                elif msg_type == "new_msg":
+                    print(f"New message received from {msg.get('sender')} in chat {msg.get('chat_name')} [{msg.get('chat_id')}]")
+            except Exception as e:
+                print("Error receiving message:", e)
+                break
+    threading.Thread(target=listener, daemon=True).start()
+
+    username = input("Enter your username: ")
+    password = input("Enter your password: ")
+    send_json(s, {"type": "login", "username": username, "password": password})
+    response = recv_json(s)
+    print(response["content"])
+
+    while True:
+        comm = input("")
+        if comm == "help":
+            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat")
+        else:
+            args = comm.split(" ")
+            if args[0] == "create_chat":
+                if len(args) < 2:
+                    print("You must enter at least one username")
+                elif len(args) > 2:
+                    users = args[1:-1]
+                    chat_name = args[-1]
+                elif len(args) == 2:
+                    users = args[1]
+                    chat_name = None
+                send_json(s, {"type" : "create_chat", "creator" : username, "users" : users, "name" : chat_name})
+            if args[0] == "get_chats":
+                if len(args) > 1:
+                    print("Too many arguments")
+                else:
+                    send_json(s, {"type" : "get_chats", "user" : username})
+            if args[0] == "open_chat":
+                if len(args) < 2:
+                    print("You must specify chat id")
+                elif len(args) > 2:
+                    print("Too many arguments")
+                else:
+                    send_json(s, {"type" : "open_chat", "chat_id" : args[1]})
+            if args[0] == "msg":
+                if len(args) < 2:
+                    print("You must enter some content")
+                else:
+                    content = " ".join(args[1:])
+                    send_json(s, {"type": "msg", "content": content})
