@@ -3,7 +3,7 @@ import json
 import threading
 
 def main():
-    HOST = input("Enter server's public IP adress: ")
+    HOST = input("Enter server's public / private IP adress: ")
     PORT = input("Enter the port the server's running on: ")
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -66,7 +66,7 @@ def main():
                     users = args[1:-1]
                     chat_name = args[-1]
                 elif len(args) == 2:
-                    users = args[1]
+                    users = [args[1]]
                     chat_name = None
                 send_json(s, {"type" : "create_chat", "creator" : username, "users" : users, "name" : chat_name})
             if args[0] == "get_chats":
