@@ -148,8 +148,11 @@ def main():
             cur.execute("insert into messages (chat_id, sender_id, file_name, file_path) values (?, ?, ?, ?)", (chat_id, sender_id, file_name, file_path))
             dbconn.commit()
             cur.execute("select sent_at, id from messages where id = ?", (cur.lastrowid,))
-            sent_at = cur.fetchone()[0]
-            message_id = cur.fetchone()[1]
+            row = cur.fetchone()
+            if row is None:
+                print(f"Error: could not fetch message for id {cur.lastrowid}")
+                return
+            sent_at, message_id = row
             cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?", (chat_id,))
             chat_users = [row[0] for row in cur.fetchall()]
             cur.execute("select name from chats where id = ?", (chat_id,))
@@ -244,9 +247,9 @@ def main():
                         if not file_name or not file_size:
                             send_json(clients[username], {"type": "error", "content": "Missing file metadata"})
                             return
-                        receive_file(message.get('sender'), file_name, file_size, clients[message.get('sender')], chat_id)
+                        receive_file(username, file_name, file_size, clients[username], chat_id)
         except Exception as e:
-            print(f"Error with client {username}")
+            print(f"Error with client {username} : {e}")
         finally:
             if username:
                 with clients_lock:
