@@ -52,8 +52,6 @@ def main():
     username = input("Enter your username: ")
     password = input("Enter your password: ")
     send_json(s, {"type": "login", "username": username, "password": password})
-    response = recv_json(s)
-    print(response["content"])
 
     while True:
         comm = input("")

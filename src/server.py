@@ -113,6 +113,16 @@ def main():
 
     try:
         response = requests.get("https://api.ipify.org")
+        def get_private_ip():
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                # Doesn't actually send data — just triggers routing table lookup
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+            finally:
+                s.close()
+            return ip
+        print("Your private IP is:", get_private_ip())
         print(f"Your public IP is: {response.text}")
         print(f"Your server is running on port: {PORT}")
     except requests.RequestException:
