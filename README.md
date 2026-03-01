@@ -26,7 +26,7 @@ Basic python chatting app where messages are sent to a server you can host anywh
 
 # How to start the app:
 1. Download the app module using pip
-2. Run 
-    **python -m app start**
+2. Run:
+    python -m app start
 3. Enter the private / public IP of the server you want to connect to
 4. Enter the port the server is running on
