@@ -43,6 +43,7 @@ def main():
                 elif msg_type == "chats_got":
                     chats = msg.get("chats")
                     clear_console()
+                    print("Your chats:\n")
                     for c in chats:
                         print(f"{c['name']} [{c['id']}]")
                 elif msg_type == "chat_open":
@@ -65,7 +66,6 @@ def main():
     username = input("Enter your username: ")
     password = input("Enter your password: ")
     send_json(s, {"type": "login", "username": username, "password": password})
-    send_json(s, {"type" : "get_chats", "user" : username})
     print("\nType 'help' for commands")
 
     while True:
