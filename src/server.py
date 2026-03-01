@@ -126,19 +126,10 @@ def main():
         except Exception as e:
             print(f"Error sending message for {user}: {e}")
             send_json(clients[user], {"type": "error", "content": "An error occurred while sending the message"})
-    def receive_file(user, file_name, file_size, sock):
-        with current_chats_lock:
-            chat_id = current_chats.get(user)
+    def receive_file(user, file_name, file_size, sock, chat_id):
         if chat_id is None:
-            send_json(clients[user], {"type": "error", "content": "No chat active"})
+            send_json(clients[user], {"type": "error", "content": "No chat selected"})
             return
-        with sqlite3.connect("chatapp.db") as dbconn:
-            cur = dbconn.cursor()
-            cur.execute("select id from chats where id = ?", (chat_id,))
-            if not cur.fetchone():
-                send_json(clients[user], {"type" : "error", "content" : "No chat selected"})
-            cur.execute("select id from users where username = ?", (user,))
-            sender_id = cur.fetchone()[0]
         base, ext = os.path.splitext(file_name)
         unique_name = f"{base}_{uuid.uuid4().hex}{ext}"
         file_path = os.path.join("files", unique_name)
@@ -152,6 +143,8 @@ def main():
                 bytes_read += len(chunk)
         with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
+            cur.execute("select id from users where username = ?", (user,))
+            sender_id = cur.fetchone()[0]
             cur.execute("insert into messages (chat_id, sender_id, file_name, file_path) values (?, ?, ?, ?)", (chat_id, sender_id, file_name, file_path))
             dbconn.commit()
             cur.execute("select sent_at, id from messages where id = ?", (cur.lastrowid,))
@@ -162,11 +155,10 @@ def main():
             cur.execute("select name from chats where id = ?", (chat_id,))
             chat_name_row = cur.fetchone()
             chat_name = chat_name_row[0] if chat_name_row and chat_name_row[0] else None
-        with current_chats_lock:
-            for user in chat_users:
-                file_dict = {"type": "new_file", "chat_id": chat_id, "chat_name" : chat_name, "sender": user, "file_name": file_name, "message_id": message_id, "content": None, "sent_at": sent_at}
-                if user in clients:
-                    send_json(clients[user], file_dict)
+        for user in chat_users:
+            file_dict = {"type": "new_file", "chat_id": chat_id, "chat_name" : chat_name, "sender": user, "file_name": file_name, "message_id": message_id, "content": None, "sent_at": sent_at}
+            if user in clients:
+                send_json(clients[user], file_dict)
 
     with sqlite3.connect("chatapp.db") as dbconn:
         dbconn.execute("PRAGMA foreign_keys = ON")
@@ -248,10 +240,11 @@ def main():
                     elif json_type == "send_file":
                         file_name = message.get("file_name")
                         file_size = message.get("file_size")
+                        chat_id = message.get("chat_id")
                         if not file_name or not file_size:
                             send_json(clients[username], {"type": "error", "content": "Missing file metadata"})
                             return
-                        receive_file(message.get('sender'), file_name, file_size, clients[message.get('sender')])
+                        receive_file(message.get('sender'), file_name, file_size, clients[message.get('sender')], chat_id)
         except Exception as e:
             print(f"Error with client {username}")
         finally:
