@@ -65,6 +65,12 @@ def main():
                         print(f"{msg.get('sender')} : {msg.get('content')}   {msg.get('sent_at')}")
                     else:
                         print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
+                elif msg_type == "new_file":
+                    chat_id = msg.get("chat_id")
+                    if chat_id == current_chat_id:
+                        print(f"{msg.get('sender')} sent a file : {msg.get('file_name')}   {msg.get('sent_at')} [{msg.get('message_id')}]")
+                    else:
+                        print(f"New file from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
                 elif msg_type == "closed_chat":
                     clear_console()
                     print("Successfully closed chat")
@@ -86,7 +92,7 @@ def main():
             break
         comm = input("").strip()
         if comm == "help":
-            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console")
+            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console\nsend_file [relative file path to the app.py file] - sends a file in the current chat")
         else:
             args = comm.split(" ")
             if args[0] == "create_chat":
@@ -123,6 +129,19 @@ def main():
                 running = False
             elif args[0] == "clear":
                 clear_console()
+            elif args[0] == "send_file":
+                if len(args) < 2 or len(args) > 2:
+                    print("send_file accepts exactly two arguments")
+                else:
+                    try:
+                        file_path = args[1]
+                        send_json(s, {"type" : "send_file", "sender" : username, "file_name" : os.path.basename(file_path), "file_size" : os.path.getsize(file_path)})
+                        with open(file_path, "rb") as file:
+                            while chunk := file.read(4096):
+                                s.sendall(chunk)
+                        print(f"Sent file {os.path.basename(file_path)} ({os.path.getsize(file_path)} bytes)")
+                    except Exception as e:
+                        print(f"Error while sending file - {e}")
             else:
                 print("Invalid command")
 
