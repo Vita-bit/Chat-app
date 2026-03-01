@@ -170,8 +170,7 @@ def main():
                                     print(f"Client {username} connected")
                                 send_json(conn, {"type": "success", "content": "Successfully logged in"})
                             else:
-                                send_json(conn, {"type": "error", "content": "Wrong password"})
-                                send_json(conn, {"type" : "disconnect"})
+                                send_json(conn, {"type" : "disconnect", "content" : "Wrong password"})
                         else:
                                 cur.execute("insert into users(username, password) values(?, ?)",(username,password))
                                 dbconn.commit()
@@ -196,14 +195,13 @@ def main():
                         current_chats[message.get('user')] = None
                         send_json(clients[message.get('user')], {"type" : "closed_chat"})
         except Exception as e:
-            print(f"Error with client {username}: {e}")
+            print(f"Error with client {username}")
         finally:
-            send_json(clients[username], {"type" : "disconnect"})
             if username:
                 with clients_lock:
                     if username in clients:
                         try:
-                            send_json(clients[username], {"type": "disconnect"})
+                            send_json(clients[username], {"type": "disconnect", "content" : "Disconnected"})
                         except Exception:
                             pass
                         del clients[username]
