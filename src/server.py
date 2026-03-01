@@ -91,11 +91,17 @@ def main():
             if not chat_exists:
                 send_json(clients[username], {"type": "error", "content": f"Chat {chat_id} does not exist"})
                 return
-            cur.execute("select u.username as sender, m.content, m.sent_at from messages m join users u on m.sender_id = u.id where m.chat_id = ? order by m.sent_at desc limit 50", (chat_id,))
+            cur.execute("select m.id, u.username as sender, m.content, m.file_name, m.sent_at from messages m join users u on m.sender_id = u.id where m.chat_id = ? order by m.sent_at desc limit 50", (chat_id,))
             rows = cur.fetchall()
-            messages = [{"sender": r[0], "content": r[1], "sent_at": r[2]} for r in reversed(rows)]
+            messages = []
+            for r in reversed(rows):
+                id, sender, content, file_name, sent_at = r
+                if content is None and file_name is not None:
+                    content = f"<File: {file_name} [{id}]>"
+                messages.append({"sender": sender, "content": content, "sent_at": sent_at})
             with current_chats_lock:
                 current_chats[username] = chat_id
+
             send_json(clients[username], {"type": "chat_open", "chat_id": chat_id, "messages": messages})
     def msg(user, content):
         with current_chats_lock:
