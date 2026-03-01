@@ -32,4 +32,22 @@ print(response["content"])
 while True:
     comm = input("")
     if comm == "help":
-        print("get_chats - prints all your chats\ncreate_chat [username] - creates a chat with another user\ncreate_group [name] [usernames (list)]- creates a group chat with other users\nopen_chat [chat_id] - opens chat and prints the last 50 messages")
+        print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages")
+    else:
+        args = comm.split(" ")
+        if args[0] == "create_chat":
+            if len(args) < 2:
+                print("You must enter at least one username")
+            elif len(args) > 2:
+                users = args[1:-1]
+                chat_name = args[-1]
+            else:
+                users = args[1:]
+                chat_name = None
+            send_json(s, {"type" : "create_chat", "creator" : username, "users" : users, "name" : chat_name})
+            response = recv_json(s)
+            print(response["content"])
+        if args[0] == "get_chats":
+            send_json(s, {"type" : "get_chats", "user" : username})
+            response = recv_json(s)
+            print(response["content"])

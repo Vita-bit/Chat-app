@@ -23,6 +23,47 @@ def recv_json(sock):
             break
         data += chunk
     return json.loads(data.decode())
+def create_chat(users, creator, conn, chat_name=None, is_group=False):
+    is_group = len(users) + 1 > 2
+    if not is_group and chat_name is None:
+        chat_name = None
+    elif is_group and chat_name is None:
+        chat_name = "Group Chat"
+    with sqlite3.connect("db/chatapp.db") as dbconn:
+        dbconn.execute("pragma foreign_keys = ON")
+        cur = dbconn.cursor()
+        user_ids = []
+        for username in users:
+            cur.execute("select id from users where username = ?", (username,))
+            row = cur.fetchone()
+            if row is None:
+                if conn:
+                    send_json(conn, {"type": "error", "content": f"User '{username}' does not exist"})
+                    continue
+            user_ids.append(row[0])
+        cur.execute("insert into chats (name, is_group) values (?, ?)", (chat_name, int(is_group)))
+        chat_id = cur.lastrowid
+        for user_id in user_ids:
+            cur.execute("insert into chat_users (chat_id, user_id) values (?, ?)", (chat_id, user_id))
+        cur.execute("select id from users where username = ?", (creator,))
+        creator_row = cur.fetchone()
+        creator_id = creator_row[0]
+        cur.execute("insert into chat_users (chat_id, user_id) values (?,?)",(chat_id, creator_id))
+        dbconn.commit()
+def get_chats(user):
+    with sqlite3.connect("db/chatapp.db") as dbconn:
+        dbconn.execute("pragma foreign_keys = ON")
+        cur = dbconn.cursor()
+        cur.execute("select id from users where username = ?", (user,))
+        user_id_row = cur.fetchone()
+        if user_id_row:
+            user_id = user_id_row[0]
+        cur.execute("select c.id as chat_id, coalesce(c.name, u.username) as chat_name from chats c join chat_users cu on c.id = cu.chat_id join users u on u.id = cu.user_id where cu.chat_id in (select chat_id from chat_users where user_id = ?) and u.username != ? group by c.id",(user_id, user_id))
+        rows = cur.fetchall()
+        ret = []
+        for r in rows:
+            ret.append({"id" : r[0], "name" : r[1]})
+        send_json(clients[user], {"type" : "success", "chats" : ret})
 
 with sqlite3.connect("db/chatapp.db") as dbconn:
     dbconn.execute("PRAGMA foreign_keys = ON")
@@ -72,6 +113,11 @@ def handle_client(conn, addr):
                         send_json(conn, {"type" : "success", "content" : "Created user"})
         else:
             json_type = message.get("type")
+            if json_type == "create_chat":
+                users = message.get("users")
+                creator = message.get("creator")
+                chat_name = message.get("name")
+                create_chat(users, creator, clients[username], chat_name)
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, int(PORT)))
