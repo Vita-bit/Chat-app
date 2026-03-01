@@ -170,9 +170,12 @@ def main():
                 if len(args) != 2:
                     print("download_file accepts exactly one argument: the message id")
                 else: 
+                    if not current_chat_id:
+                        print("No chat currently open. Use open_chat first.")
+                        continue
                     try:
                         os.makedirs("files", exist_ok=True)
-                        send_json(s, {"type" : "request_download", "file_id" : args[1]})
+                        send_json(s, {"type" : "request_download", "file_id" : args[1], "chat_id" : current_chat_id})
                     except Exception as e:
                         print(f"Error while trying to download file: {e}")
             else:

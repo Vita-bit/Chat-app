@@ -168,10 +168,23 @@ def main():
             file_dict = {"type": "new_file", "chat_id": chat_id, "chat_name" : chat_name, "sender": user, "file_name": file_name, "message_id": message_id, "content": None, "sent_at": sent_at}
             if user in clients:
                 send_json(clients[user], file_dict)
-    def download_file(user, message_id, sock):
+    def download_file(user, message_id, sock, chat_id):
         try:
+            if chat_id is None:
+                send_json(clients[user], {"type": "error", "content": "No chat selected"})
+                return
             with sqlite3.connect("chatapp.db") as dbconn:
                 cur = dbconn.cursor()
+                cur.execute("select id from users where username = ?", (user,))
+                user_row = cur.fetchone()
+                if not user_row:
+                    send_json(sock, {"type": "error", "content": "Invalid user"})
+                    return
+                user_id = user_row[0]
+                cur.execute("select 1 from chat_users where chat_id = ? and user_id = ?", (chat_id, user_id))
+                if not cur.fetchone():
+                    send_json(sock, {"type": "error", "content": "You are not in this chat"})
+                    return
                 cur.execute("select file_name, file_path from messages where id = ?", (message_id,))
                 row = cur.fetchone()
                 if not row:
@@ -277,8 +290,9 @@ def main():
                             return
                         receive_file(username, file_name, file_size, clients[username], chat_id)
                     elif json_type == "request_download":
+                        chat_id = message.get("chat_id")
                         file_id = message.get("file_id")
-                        download_file(username, file_id, clients[username])
+                        download_file(username, file_id, clients[username], chat_id)
         except Exception as e:
             print(f"Error with client {username} : {e}")
         finally:
