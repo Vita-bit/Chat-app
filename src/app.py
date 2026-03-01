@@ -109,7 +109,7 @@ def main():
             elif args[0] == "close_chat":
                 send_json(s, {"type" : "close_chat", "user" : username})
             elif args[0] == "logout":
-                send_json(s, {"type" : "logout", "user" : username})
+                break
             elif args[0] == "clear":
                 clear_console()
             else:
