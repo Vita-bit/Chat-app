@@ -7,7 +7,7 @@ PORT = input("Enter the port the server's running on: ")
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, int(PORT)))
 
-    message = {"username": "Alice", "message": "Hello!"}
+    message = {"username": "user", "message": "Hello!"}
     s.sendall((json.dumps(message) + "\n").encode())
 
     data = s.recv(1024).decode()
