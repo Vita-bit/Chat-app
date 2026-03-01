@@ -33,7 +33,7 @@ def main():
                     break
                 msg_type = msg.get("type")
                 if msg_type == "success" or msg_type == "error":
-                    print(f"\n{msg.get('content')}")
+                    print(f"{msg.get('content')}")
                 elif msg_type == "chats_got":
                     chats = msg.get("chats")
                     for c in chats:
