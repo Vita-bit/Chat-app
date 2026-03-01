@@ -3,19 +3,19 @@
 Basic python chatting app where messages are sent to a server you can host anywhere. Each server has its own SQLite database. The user interacts with the server using sockets as JSON files. After connecting to a server users have to register / log in. Then they can create private chats / group chats with other users.
 
 # Functions:
-    - Basic chat with messages
-    - Voice messages
-    - Voice chat and calls
-    - Sending files
+- Basic chat with messages
+- Voice messages
+- Voice chat and calls
+- Sending files
 
 # Used libraries:
-    - PyQT
-    - opencv
-    - aiortc
-    - asyncio
-    - sounddevice
-    - sqlite3
-    - FastAPI
+- PyQT
+- opencv
+- aiortc
+- asyncio
+- sounddevice
+- sqlite3
+- FastAPI
 
 # How to setup the server:
 1. Download the server module using pip
