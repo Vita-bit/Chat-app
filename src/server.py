@@ -186,6 +186,9 @@ def main():
                         open_chat(message.get("chat_id"), username)
                     elif json_type == "msg":
                         msg(username, message.get("content"))
+                    elif json_type == "close_chat":
+                        current_chats[message.get('user')] = None
+                        send_json(clients[message.get('user')], {"type" : "closed_chat"})
         except Exception as e:
             print(f"Error with client {username}: {e}")
         finally:
