@@ -47,7 +47,7 @@ def main():
                 elif msg_type == "new_msg":
                     chat_id = msg.get("chat_id")
                     if chat_id == current_chat_id:
-                        print(f"{msg.get('sender')} : {msg.get('content')},   {m.get('sent_at')}")
+                        print(f"{msg.get('sender')} : {msg.get('content')}   {m.get('sent_at')}")
                     else:
                         print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
             except Exception as e:
