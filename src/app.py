@@ -108,7 +108,7 @@ def main():
             break
         comm = input("").strip()
         if comm == "help":
-            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console\nsend_file [relative file path to the app.py file] - sends a file in the current chat\ndownload_file [file id] downloads the file to the files directory")
+            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console\nsend_file [file path to the file] - sends a file in the current chat\ndownload_file [file id] downloads the file to the files directory")
         else:
             args = comm.split(" ")
             if args[0] == "create_chat":
