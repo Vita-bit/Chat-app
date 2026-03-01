@@ -1,6 +1,7 @@
 import socket
 import json
 import threading
+import os
 
 def main():
     HOST = input("Enter server's public / private IP adress: ")
@@ -8,8 +9,7 @@ def main():
     current_chat_id = None
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((HOST, PORT))
-    print("Type 'help' for commands")
+    s.connect((HOST, int(PORT)))
 
     def send_json(sock, message):
         data = json.dumps(message).encode()
@@ -25,6 +25,11 @@ def main():
                 break
             data += chunk
         return json.loads(data.decode())
+    def clear_console():
+        if os.name == 'nt':
+            os.system('cls')
+        else:
+            os.system('clear')
     def listener():
         while True:
             try:
@@ -37,9 +42,11 @@ def main():
                     print(f"{msg.get('content')}")
                 elif msg_type == "chats_got":
                     chats = msg.get("chats")
+                    clear_console()
                     for c in chats:
                         print(f"{c['name']} [{c['id']}]")
                 elif msg_type == "chat_open":
+                    clear_console()
                     print(f"Entered chat with id {msg.get('chat_id')}")
                     current_chat_id = msg.get('chat_id')
                     for m in msg.get("messages"):
@@ -47,7 +54,7 @@ def main():
                 elif msg_type == "new_msg":
                     chat_id = msg.get("chat_id")
                     if chat_id == current_chat_id:
-                        print(f"{msg.get('sender')} : {msg.get('content')},   {m.get('sent_at')}")
+                        print(f"{msg.get('sender')} : {msg.get('content')}   {m.get('sent_at')}")
                     else:
                         print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
             except Exception as e:
@@ -58,6 +65,8 @@ def main():
     username = input("Enter your username: ")
     password = input("Enter your password: ")
     send_json(s, {"type": "login", "username": username, "password": password})
+    send_json(s, {"type" : "get_chats", "user" : username})
+    print("\nType 'help' for commands")
 
     while True:
         comm = input("")
