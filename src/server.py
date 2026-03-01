@@ -97,7 +97,7 @@ def main():
             for r in reversed(rows):
                 id, sender, content, file_name, sent_at = r
                 if content is None and file_name is not None:
-                    content = f"<File: {file_name} [{id}]>"
+                    content = f"File: {file_name} [{id}]"
                 messages.append({"sender": sender, "content": content, "sent_at": sent_at})
             with current_chats_lock:
                 current_chats[username] = chat_id
