@@ -33,7 +33,7 @@ def main():
             chat_name = None
         elif is_group and chat_name is None:
             chat_name = "Group Chat"
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             dbconn.execute("pragma foreign_keys = ON")
             cur = dbconn.cursor()
             user_ids = []
@@ -56,7 +56,7 @@ def main():
                 cur.execute("insert into chat_users (chat_id, user_id) values (?,?)",(chat_id, creator_id))
             dbconn.commit()
     def get_chats(user):
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             dbconn.execute("pragma foreign_keys = ON")
             cur = dbconn.cursor()
             cur.execute("select id from users where username = ?", (user,))
@@ -72,7 +72,7 @@ def main():
                 ret.append({"id" : r[0], "name" : r[1]})
             send_json(clients[user], {"type" : "chats_got", "chats" : ret})
     def open_chat(chat_id, username):
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
             cur.execute("select u.username as sender, m.content, m.sent_at from messages m join users u on m.sender_id = u.id where m.chat_id = ? order by m.sent_at desc limit 50", (chat_id,))
             rows = cur.fetchall()
@@ -84,7 +84,7 @@ def main():
         if chat_id is None:
             send_json(clients[user], {"type": "error", "content": "No chat active"})
             return
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
             cur.execute("select id from users where username = ?", (user,))
             sender_id = cur.fetchone()[0]
@@ -101,7 +101,7 @@ def main():
                 if target_user in clients:
                     send_json(clients[target_user], msg_dict)
 
-    with sqlite3.connect("db/chatapp.db") as dbconn:
+    with sqlite3.connect("chatapp.db") as dbconn:
         dbconn.execute("PRAGMA foreign_keys = ON")
         cur = dbconn.cursor()
         cur.execute("create table if not exists users (id integer primary key autoincrement, username text not null unique, password text not null)")
@@ -129,7 +129,7 @@ def main():
                     password = message.get("password")
                     if not username or not password:
                             send_json(conn, {"type": "error", "content": "Username and password required"})
-                    with sqlite3.connect("db/chatapp.db") as dbconn:
+                    with sqlite3.connect("chatapp.db") as dbconn:
                         dbconn.execute("PRAGMA foreign_keys = ON")
                         cur = dbconn.cursor()
                         cur.execute("select id, password from users where username = ?",(username,))
