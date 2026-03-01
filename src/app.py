@@ -35,7 +35,6 @@ def main():
             try:
                 msg = recv_json(s)
                 if msg is None:
-                    clear_console()
                     print("Disconnected from the server")
                     break
                 msg_type = msg.get("type")
@@ -63,7 +62,6 @@ def main():
                     clear_console()
                     print("Successfully closed chat")
                 elif msg_type == "disconnect":
-                    clear_console()
                     print("Disconnected from the server")
                     break
             except Exception as e:

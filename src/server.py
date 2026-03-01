@@ -171,6 +171,7 @@ def main():
                                 send_json(conn, {"type": "success", "content": "Successfully logged in"})
                             else:
                                 send_json(conn, {"type": "error", "content": "Wrong password"})
+                                send_json(conn, {"type" : "disconnect"})
                         else:
                                 cur.execute("insert into users(username, password) values(?, ?)",(username,password))
                                 dbconn.commit()
