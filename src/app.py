@@ -8,7 +8,7 @@ def main():
     current_chat_id = None
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((HOST, PORT))
+    s.connect((HOST, int(PORT)))
     print("Type 'help' for commands")
 
     def send_json(sock, message):
