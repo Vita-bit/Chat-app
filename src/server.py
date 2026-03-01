@@ -168,6 +168,28 @@ def main():
             file_dict = {"type": "new_file", "chat_id": chat_id, "chat_name" : chat_name, "sender": user, "file_name": file_name, "message_id": message_id, "content": None, "sent_at": sent_at}
             if user in clients:
                 send_json(clients[user], file_dict)
+    def download_file(user, message_id, sock):
+        try:
+            with sqlite3.connect("chatapp.db") as dbconn:
+                cur = dbconn.cursor()
+                cur.execute("select file_name, file_path from messages where id = ?", (message_id,))
+                row = cur.fetchone()
+                if not row:
+                    send_json(sock, {"type": "error", "content": f"No file found with id {message_id}"})
+                    return
+                file_name, file_path = row
+                if not file_path or not os.path.exists(file_path):
+                    send_json(sock, {"type": "error", "content": f"File not found on server"})
+                    return
+                file_size = os.path.getsize(file_path)
+                send_json(sock, {"type": "file_download", "file_name": file_name, "file_size": file_size})
+                with open(file_path, "rb") as f:
+                    while chunk := f.read(4096):
+                        sock.sendall(chunk)
+                print(f"Sent file {file_name} to {user}")
+        except Exception as e:
+            print(f"Error sending file for user {user}: {e}")
+            send_json(sock, {"type": "error", "content": "Failed to send file"})
 
     with sqlite3.connect("chatapp.db") as dbconn:
         dbconn.execute("PRAGMA foreign_keys = ON")
@@ -254,6 +276,9 @@ def main():
                             send_json(clients[username], {"type": "error", "content": "Missing file metadata"})
                             return
                         receive_file(username, file_name, file_size, clients[username], chat_id)
+                    elif json_type == "request_download":
+                        file_id = message.get("file_id")
+                        download_file(username, file_id, clients[username])
         except Exception as e:
             print(f"Error with client {username} : {e}")
         finally:

@@ -71,6 +71,18 @@ def main():
                         print(f"{msg.get('sender')} : File: {msg.get('file_name')} [{msg.get('message_id')}]   {msg.get('sent_at')}")
                     else:
                         print(f"New file from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
+                elif msg_type == "file_download":
+                    file_name = msg.get('file_name')
+                    file_size = msg.get('file_size')
+                    file_path = os.path.join("files", file_name)
+                    with open(file_path, "wb") as f:
+                        bytes_read = 0
+                        while bytes_read < file_size:
+                            chunk = s.recv(min(4096, file_size - bytes_read))
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                            bytes_read += len(chunk)
                 elif msg_type == "closed_chat":
                     clear_console()
                     print("Successfully closed chat")
@@ -92,7 +104,7 @@ def main():
             break
         comm = input("").strip()
         if comm == "help":
-            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console\nsend_file [relative file path to the app.py file] - sends a file in the current chat")
+            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console\nsend_file [relative file path to the app.py file] - sends a file in the current chat\ndownload_file [file id] downloads the file to the files directory")
         else:
             args = comm.split(" ")
             if args[0] == "create_chat":
@@ -150,6 +162,15 @@ def main():
                     print(f"Sent file {file_name} ({file_size} bytes)")
                 except Exception as e:
                     print(f"Error sending file: {e}")
+            elif args[0] == "download_file":
+                if len(args) != 2:
+                    print("download_file accepts exactly one argument: the message id")
+                else: 
+                    try:
+                        os.makedirs("files", exist_ok=True)
+                        send_json(s, {"type" : "request_download", "file_id" : args[1]})
+                    except Exception as e:
+                        print(f"Error while trying to download file: {e}")
             else:
                 print("Invalid command")
 
