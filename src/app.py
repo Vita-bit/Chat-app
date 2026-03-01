@@ -130,18 +130,26 @@ def main():
             elif args[0] == "clear":
                 clear_console()
             elif args[0] == "send_file":
-                if len(args) < 2 or len(args) > 2:
-                    print("send_file accepts exactly two arguments")
-                else:
-                    try:
-                        file_path = args[1]
-                        send_json(s, {"type" : "send_file", "sender" : username, "file_name" : os.path.basename(file_path), "file_size" : os.path.getsize(file_path)})
-                        with open(file_path, "rb") as file:
-                            while chunk := file.read(4096):
-                                s.sendall(chunk)
-                        print(f"Sent file {os.path.basename(file_path)} ({os.path.getsize(file_path)} bytes)")
-                    except Exception as e:
-                        print(f"Error while sending file - {e}")
+                if not current_chat_id:
+                    print("No chat currently open. Use open_chat first.")
+                    continue
+                if len(args) != 2:
+                    print("send_file accepts exactly one argument: the file path")
+                    continue
+                file_path = args[1]
+                if not os.path.exists(file_path):
+                    print("File does not exist")
+                    continue
+                file_name = os.path.basename(file_path)
+                file_size = os.path.getsize(file_path)
+                send_json(s, {"type": "send_file", "sender": username, "chat_id": current_chat_id, "file_name": file_name, "file_size": file_size})
+                try:
+                    with open(file_path, "rb") as f:
+                        while chunk := f.read(4096):
+                            s.sendall(chunk)
+                    print(f"Sent file {file_name} ({file_size} bytes)")
+                except Exception as e:
+                    print(f"Error sending file: {e}")
             else:
                 print("Invalid command")
 
