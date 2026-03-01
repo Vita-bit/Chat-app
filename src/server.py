@@ -82,6 +82,11 @@ def main():
     def open_chat(chat_id, username):
         with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
+            cur.execute("select id from chats where id = ?", (chat_id,))
+            chat_exists = cur.fetchone()
+            if not chat_exists:
+                send_json(clients[username], {"type": "error", "content": f"Chat {chat_id} does not exist"})
+                return
             cur.execute("select u.username as sender, m.content, m.sent_at from messages m join users u on m.sender_id = u.id where m.chat_id = ? order by m.sent_at desc limit 50", (chat_id,))
             rows = cur.fetchall()
             messages = [{"sender": r[0], "content": r[1], "sent_at": r[2]} for r in reversed(rows)]
@@ -189,14 +194,6 @@ def main():
                     elif json_type == "close_chat":
                         current_chats[message.get('user')] = None
                         send_json(clients[message.get('user')], {"type" : "closed_chat"})
-                    elif json_type == "logout":
-                        with clients_lock:
-                            if message.get('user') in clients:
-                                del clients[message.get('user')]
-                            if message.get('user') in current_chats:
-                                del current_chats[message.get('user')]
-                        conn.close()
-                        print(f"Client {message.get('user')} disconnected")
         except Exception as e:
             print(f"Error with client {username}: {e}")
         finally:
