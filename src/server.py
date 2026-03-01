@@ -3,10 +3,13 @@ import sqlite3
 import requests
 import json
 import threading
+import os
+import uuid
 
 def main():
     PORT = input("Enter the port for the server to run on: ")
     HOST = "0.0.0.0"
+    os.makedirs("files", exist_ok=True)
     clients = {}
     clients_lock = threading.Lock()
     current_chats = {}
@@ -123,6 +126,47 @@ def main():
         except Exception as e:
             print(f"Error sending message for {user}: {e}")
             send_json(clients[user], {"type": "error", "content": "An error occurred while sending the message"})
+    def receive_file(user, file_name, file_size, sock):
+        with current_chats_lock:
+            chat_id = current_chats.get(user)
+        if chat_id is None:
+            send_json(clients[user], {"type": "error", "content": "No chat active"})
+            return
+        with sqlite3.connect("chatapp.db") as dbconn:
+            cur = dbconn.cursor()
+            cur.execute("select id from chats where id = ?", (chat_id,))
+            if not cur.fetchone():
+                send_json(clients[user], {"type" : "error", "content" : "No chat selected"})
+            cur.execute("select id from users where username = ?", (user,))
+            sender_id = cur.fetchone()[0]
+        base, ext = os.path.splitext(file_name)
+        unique_name = f"{base}_{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join("files", unique_name)
+        with open(file_path, "wb") as f:
+            bytes_read = 0
+            while bytes_read < file_size:
+                chunk = sock.recv(min(4096, file_size - bytes_read))
+                if not chunk:
+                    break
+                f.write(chunk)
+                bytes_read += len(chunk)
+        with sqlite3.connect("chatapp.db") as dbconn:
+            cur = dbconn.cursor()
+            cur.execute("insert into messages (chat_id, sender_id, file_name, file_path) values (?, ?, ?, ?)", (chat_id, sender_id, file_name, file_path))
+            dbconn.commit()
+            cur.execute("select sent_at, id from messages where id = ?", (cur.lastrowid,))
+            sent_at = cur.fetchone()[0]
+            message_id = cur.fetchone()[1]
+            cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?", (chat_id,))
+            chat_users = [row[0] for row in cur.fetchall()]
+            cur.execute("select name from chats where id = ?", (chat_id,))
+            chat_name_row = cur.fetchone()
+            chat_name = chat_name_row[0] if chat_name_row and chat_name_row[0] else None
+        with current_chats_lock:
+            for user in chat_users:
+                file_dict = {"type": "new_file", "chat_id": chat_id, "chat_name" : chat_name, "sender": user, "file_name": file_name, "message_id": message_id, "content": None, "sent_at": sent_at}
+                if user in clients:
+                    send_json(clients[user], file_dict)
 
     with sqlite3.connect("chatapp.db") as dbconn:
         dbconn.execute("PRAGMA foreign_keys = ON")
@@ -130,8 +174,7 @@ def main():
         cur.execute("create table if not exists users (id integer primary key autoincrement, username text not null unique, password text not null)")
         cur.execute("create table if not exists chats (id integer primary key autoincrement, name text, is_group boolean not null default 0)")
         cur.execute("create table if not exists chat_users (chat_id integer not null, user_id integer not null, primary key (chat_id, user_id), foreign key (chat_id) references chats(id) on delete cascade, foreign key (user_id) references users(id) on delete cascade)")
-        cur.execute("create table if not exists messages (id integer primary key autoincrement, chat_id integer not null, sender_id integer not null, content text not null, sent_at datetime default current_timestamp, foreign key (chat_id) references chats(id) on delete cascade, foreign key (sender_id) references users(id) on delete cascade)")
-        cur.execute("create table if not exists files (id integer primary key autoincrement, chat_id integer not null, sender_id integer not null, file_name text not null, file_path text not null, sent_at datetime default current_timestamp, foreign key (chat_id) references chats(id) on delete cascade, foreign key (sender_id) references users(id) on delete cascade)")
+        cur.execute("create table if not exists messages (id integer primary key autoincrement, chat_id integer not null, sender_id integer not null, content text, file_name text, file_path text, sent_at datetime default current_timestamp, foreign key (chat_id) references chats(id) on delete cascade, foreign key (sender_id) references users(id) on delete cascade)")
         dbconn.commit()
 
     try:
@@ -202,6 +245,10 @@ def main():
                         with current_chats_lock:
                             current_chats[message.get('user')] = None
                         send_json(clients[message.get('user')], {"type" : "closed_chat"})
+                    elif json_type == "send_file":
+                        file_name = message.get("file_name")
+                        file_size = message.get("file_size")
+                        receive_file(message.get('sender'), file_name, file_size, clients[message.get('sender')])
         except Exception as e:
             print(f"Error with client {username}")
         finally:
