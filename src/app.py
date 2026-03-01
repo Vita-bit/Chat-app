@@ -61,6 +61,8 @@ def main():
                 elif msg_type == "closed_chat":
                     clear_console()
                     print("Successfully closed chat")
+                elif msg_type == "disconnect":
+                    print("Disconnected from the server")
             except Exception as e:
                 print("Error receiving message:", e)
                 break
