@@ -75,14 +75,18 @@ def main():
                     file_name = msg.get('file_name')
                     file_size = msg.get('file_size')
                     file_path = os.path.join("files", file_name)
-                    with open(file_path, "wb") as f:
-                        bytes_read = 0
-                        while bytes_read < file_size:
-                            chunk = s.recv(min(4096, file_size - bytes_read))
-                            if not chunk:
-                                break
-                            f.write(chunk)
-                            bytes_read += len(chunk)
+                    try:
+                        with open(file_path, "wb") as f:
+                            bytes_read = 0
+                            while bytes_read < file_size:
+                                chunk = s.recv(min(4096, file_size - bytes_read))
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+                                bytes_read += len(chunk)
+                        print("File downloaded succesfully")
+                    except Exception as e:
+                        print(f"Error occured while downloading file: {e}")
                 elif msg_type == "closed_chat":
                     clear_console()
                     print("Successfully closed chat")
