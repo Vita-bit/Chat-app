@@ -182,3 +182,5 @@ def main():
         while True:
             conn, addr = s.accept()
             threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
+
+main()

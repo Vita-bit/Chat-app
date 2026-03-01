@@ -89,3 +89,5 @@ def main():
                 else:
                     content = " ".join(args[1:])
                     send_json(s, {"type": "msg", "content": content})
+
+main()
