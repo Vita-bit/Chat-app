@@ -3,8 +3,9 @@ import json
 import threading
 
 def main():
-    HOST = input("Enter server's public IP adress: ")
+    HOST = input("Enter server's public / private IP adress: ")
     PORT = input("Enter the port the server's running on: ")
+    current_chat_id = None
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, PORT))
@@ -33,17 +34,22 @@ def main():
                     break
                 msg_type = msg.get("type")
                 if msg_type == "success" or msg_type == "error":
-                    print(f"\n{msg.get('content')}")
+                    print(f"{msg.get('content')}")
                 elif msg_type == "chats_got":
                     chats = msg.get("chats")
                     for c in chats:
                         print(f"{c['name']} [{c['id']}]")
                 elif msg_type == "chat_open":
                     print(f"Entered chat with id {msg.get('chat_id')}")
+                    current_chat_id = msg.get('chat_id')
                     for m in msg.get("messages"):
                         print(f"{m['sender']} : {m['content']},   {m['sent_at']}")
                 elif msg_type == "new_msg":
-                    print(f"New message received from {msg.get('sender')} in chat {msg.get('chat_name')} [{msg.get('chat_id')}]")
+                    chat_id = msg.get("chat_id")
+                    if chat_id == current_chat_id:
+                        print(f"{msg.get('sender')} : {msg.get('content')},   {m.get('sent_at')}")
+                    else:
+                        print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
             except Exception as e:
                 print("Error receiving message:", e)
                 break
@@ -52,8 +58,6 @@ def main():
     username = input("Enter your username: ")
     password = input("Enter your password: ")
     send_json(s, {"type": "login", "username": username, "password": password})
-    response = recv_json(s)
-    print(response["content"])
 
     while True:
         comm = input("")
@@ -68,7 +72,7 @@ def main():
                     users = args[1:-1]
                     chat_name = args[-1]
                 elif len(args) == 2:
-                    users = args[1]
+                    users = [args[1]]
                     chat_name = None
                 send_json(s, {"type" : "create_chat", "creator" : username, "users" : users, "name" : chat_name})
             if args[0] == "get_chats":
@@ -89,3 +93,5 @@ def main():
                 else:
                     content = " ".join(args[1:])
                     send_json(s, {"type": "msg", "content": content})
+
+main()

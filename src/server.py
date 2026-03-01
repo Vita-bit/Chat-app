@@ -12,28 +12,35 @@ def main():
     current_chats = {}
 
     def send_json(sock, message):
-        data = json.dumps(message).encode()
-        sock.sendall(len(data).to_bytes(4, "big"))
-        sock.sendall(data)
+        try:
+            data = json.dumps(message).encode()
+            sock.sendall(len(data).to_bytes(4, "big"))
+            sock.sendall(data)
+        except (ConnectionResetError, BrokenPipeError):
+            return False
+        return True
     def recv_json(sock):
-        length_bytes = sock.recv(4)
-        if not length_bytes:
+        try:
+            length_bytes = sock.recv(4)
+            if not length_bytes:
+                return None
+            length = int.from_bytes(length_bytes, "big")
+            data = b""
+            while len(data) < length:
+                chunk = sock.recv(length - len(data))
+                if not chunk:
+                    break
+                data += chunk
+            return json.loads(data.decode())
+        except (ConnectionResetError, json.JSONDecodeError):
             return None
-        length = int.from_bytes(length_bytes, "big")
-        data = b""
-        while len(data) < length:
-            chunk = sock.recv(length - len(data))
-            if not chunk:
-                break
-            data += chunk
-        return json.loads(data.decode())
     def create_chat(users, creator, conn, chat_name=None, is_group=False):
         is_group = len(users) + 1 > 2
         if not is_group and chat_name is None:
             chat_name = None
         elif is_group and chat_name is None:
             chat_name = "Group Chat"
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             dbconn.execute("pragma foreign_keys = ON")
             cur = dbconn.cursor()
             user_ids = []
@@ -56,7 +63,7 @@ def main():
                 cur.execute("insert into chat_users (chat_id, user_id) values (?,?)",(chat_id, creator_id))
             dbconn.commit()
     def get_chats(user):
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             dbconn.execute("pragma foreign_keys = ON")
             cur = dbconn.cursor()
             cur.execute("select id from users where username = ?", (user,))
@@ -72,7 +79,7 @@ def main():
                 ret.append({"id" : r[0], "name" : r[1]})
             send_json(clients[user], {"type" : "chats_got", "chats" : ret})
     def open_chat(chat_id, username):
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
             cur.execute("select u.username as sender, m.content, m.sent_at from messages m join users u on m.sender_id = u.id where m.chat_id = ? order by m.sent_at desc limit 50", (chat_id,))
             rows = cur.fetchall()
@@ -84,24 +91,27 @@ def main():
         if chat_id is None:
             send_json(clients[user], {"type": "error", "content": "No chat active"})
             return
-        with sqlite3.connect("db/chatapp.db") as dbconn:
+        with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
             cur.execute("select id from users where username = ?", (user,))
             sender_id = cur.fetchone()[0]
             cur.execute("insert into messages (chat_id, sender_id, content) VALUES (?, ?, ?)",(chat_id, sender_id, content))
             dbconn.commit()
+            cur.execute("select sent_at from messages where id = ?",(cur.lastrowid,))
+            sent_at_row = cur.fetchone()
+            sent_at = sent_at_row[0] if sent_at_row else None
             cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?",(chat_id,))
             users = cur.fetchall()
             cur.execute("select name from chats where id = ?", (chat_id,))
             chat_name_row = cur.fetchone()
             chat_name = chat_name_row[0] if chat_name_row and chat_name_row[0] else None
-            msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": content, "chat_name" : chat_name}
+            msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": content, "chat_name" : chat_name, "sent_at" : sent_at}
             for u in users:
                 target_user = u[0]
                 if target_user in clients:
                     send_json(clients[target_user], msg_dict)
 
-    with sqlite3.connect("db/chatapp.db") as dbconn:
+    with sqlite3.connect("chatapp.db") as dbconn:
         dbconn.execute("PRAGMA foreign_keys = ON")
         cur = dbconn.cursor()
         cur.execute("create table if not exists users (id integer primary key autoincrement, username text not null unique, password text not null)")
@@ -113,6 +123,16 @@ def main():
 
     try:
         response = requests.get("https://api.ipify.org")
+        def get_private_ip():
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                # Doesn't actually send data — just triggers routing table lookup
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+            finally:
+                s.close()
+            return ip
+        print("Your private IP is:", get_private_ip())
         print(f"Your public IP is: {response.text}")
         print(f"Your server is running on port: {PORT}")
     except requests.RequestException:
@@ -124,12 +144,14 @@ def main():
         try:
             while True:
                 message = recv_json(conn)
+                if message is None:
+                    break
                 if username is None:
                     username = message.get("username")
                     password = message.get("password")
                     if not username or not password:
                             send_json(conn, {"type": "error", "content": "Username and password required"})
-                    with sqlite3.connect("db/chatapp.db") as dbconn:
+                    with sqlite3.connect("chatapp.db") as dbconn:
                         dbconn.execute("PRAGMA foreign_keys = ON")
                         cur = dbconn.cursor()
                         cur.execute("select id, password from users where username = ?",(username,))
@@ -182,3 +204,5 @@ def main():
         while True:
             conn, addr = s.accept()
             threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
+
+main()
