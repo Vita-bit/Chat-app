@@ -43,6 +43,7 @@ def main():
                 elif msg_type == "chats_got":
                     chats = msg.get("chats")
                     clear_console()
+                    print("Your chats:\n")
                     for c in chats:
                         print(f"{c['name']} [{c['id']}]")
                 elif msg_type == "chat_open":
@@ -57,6 +58,9 @@ def main():
                         print(f"{msg.get('sender')} : {msg.get('content')}   {m.get('sent_at')}")
                     else:
                         print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
+                elif msg_type == "closed_chat":
+                    clear_console()
+                    print("Successfully closed chat")
             except Exception as e:
                 print("Error receiving message:", e)
                 break
@@ -65,13 +69,13 @@ def main():
     username = input("Enter your username: ")
     password = input("Enter your password: ")
     send_json(s, {"type": "login", "username": username, "password": password})
-    send_json(s, {"type" : "get_chats", "user" : username})
     print("\nType 'help' for commands")
 
     while True:
         comm = input("")
         if comm == "help":
-            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat")
+            clear_console()
+            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console")
         else:
             args = comm.split(" ")
             if args[0] == "create_chat":
@@ -84,23 +88,31 @@ def main():
                     users = [args[1]]
                     chat_name = None
                 send_json(s, {"type" : "create_chat", "creator" : username, "users" : users, "name" : chat_name})
-            if args[0] == "get_chats":
+            elif args[0] == "get_chats":
                 if len(args) > 1:
                     print("Too many arguments")
                 else:
                     send_json(s, {"type" : "get_chats", "user" : username})
-            if args[0] == "open_chat":
+            elif args[0] == "open_chat":
                 if len(args) < 2:
                     print("You must specify chat id")
                 elif len(args) > 2:
                     print("Too many arguments")
                 else:
                     send_json(s, {"type" : "open_chat", "chat_id" : args[1]})
-            if args[0] == "msg":
+            elif args[0] == "msg":
                 if len(args) < 2:
                     print("You must enter some content")
                 else:
                     content = " ".join(args[1:])
                     send_json(s, {"type": "msg", "content": content})
+            elif args[0] == "close_chat":
+                send_json(s, {"type" : "close_chat", "user" : username})
+            elif args[0] == "logout":
+                send_json(s, {"type" : "logout", "user" : username})
+            elif args[0] == "clear":
+                clear_console()
+            else:
+                print("Invalid command")
 
 main()
