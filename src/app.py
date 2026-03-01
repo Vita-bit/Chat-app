@@ -5,6 +5,7 @@ import threading
 def main():
     HOST = input("Enter server's public / private IP adress: ")
     PORT = input("Enter the port the server's running on: ")
+    current_chat_id = None
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, PORT))
@@ -40,10 +41,15 @@ def main():
                         print(f"{c['name']} [{c['id']}]")
                 elif msg_type == "chat_open":
                     print(f"Entered chat with id {msg.get('chat_id')}")
+                    current_chat_id = msg.get('chat_id')
                     for m in msg.get("messages"):
                         print(f"{m['sender']} : {m['content']},   {m['sent_at']}")
                 elif msg_type == "new_msg":
-                    print(f"New message received from {msg.get('sender')} in chat {msg.get('chat_name')} [{msg.get('chat_id')}]")
+                    chat_id = msg.get("chat_id")
+                    if chat_id == current_chat_id:
+                        print(f"{msg.get('sender')} : {msg.get('content')},   {m.get('sent_at')}")
+                    else:
+                        print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
             except Exception as e:
                 print("Error receiving message:", e)
                 break

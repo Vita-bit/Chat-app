@@ -12,21 +12,28 @@ def main():
     current_chats = {}
 
     def send_json(sock, message):
-        data = json.dumps(message).encode()
-        sock.sendall(len(data).to_bytes(4, "big"))
-        sock.sendall(data)
+        try:
+            data = json.dumps(message).encode()
+            sock.sendall(len(data).to_bytes(4, "big"))
+            sock.sendall(data)
+        except (ConnectionResetError, BrokenPipeError):
+            return False
+        return True
     def recv_json(sock):
-        length_bytes = sock.recv(4)
-        if not length_bytes:
+        try:
+            length_bytes = sock.recv(4)
+            if not length_bytes:
+                return None
+            length = int.from_bytes(length_bytes, "big")
+            data = b""
+            while len(data) < length:
+                chunk = sock.recv(length - len(data))
+                if not chunk:
+                    break
+                data += chunk
+            return json.loads(data.decode())
+        except (ConnectionResetError, json.JSONDecodeError):
             return None
-        length = int.from_bytes(length_bytes, "big")
-        data = b""
-        while len(data) < length:
-            chunk = sock.recv(length - len(data))
-            if not chunk:
-                break
-            data += chunk
-        return json.loads(data.decode())
     def create_chat(users, creator, conn, chat_name=None, is_group=False):
         is_group = len(users) + 1 > 2
         if not is_group and chat_name is None:
@@ -90,12 +97,15 @@ def main():
             sender_id = cur.fetchone()[0]
             cur.execute("insert into messages (chat_id, sender_id, content) VALUES (?, ?, ?)",(chat_id, sender_id, content))
             dbconn.commit()
+            cur.execute("select sent_at from messages where id = ?",(cur.lastrowid,))
+            sent_at_row = cur.fetchone()
+            sent_at = sent_at_row[0] if sent_at_row else None
             cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?",(chat_id,))
             users = cur.fetchall()
             cur.execute("select name from chats where id = ?", (chat_id,))
             chat_name_row = cur.fetchone()
             chat_name = chat_name_row[0] if chat_name_row and chat_name_row[0] else None
-            msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": content, "chat_name" : chat_name}
+            msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": content, "chat_name" : chat_name, "sent_at" : sent_at}
             for u in users:
                 target_user = u[0]
                 if target_user in clients:
@@ -134,6 +144,8 @@ def main():
         try:
             while True:
                 message = recv_json(conn)
+                if message is None:
+                    break
                 if username is None:
                     username = message.get("username")
                     password = message.get("password")
