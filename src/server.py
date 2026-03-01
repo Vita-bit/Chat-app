@@ -25,8 +25,13 @@ def recv_json(sock):
     return json.loads(data.decode())
 
 with sqlite3.connect("chatapp.db") as dbconn:
+    dbconn.execute("PRAGMA foreign_keys = ON")
     cur = dbconn.cursor()
     cur.execute("create table if not exists users (id integer primary key autoincrement, username text not null unique, password text not null)")
+    cur.execute("create table if not exists chats (id integer primary key autoincrement, name text, is_group boolean not null default 0)")
+    cur.execute("create table if not exists chat_users (chat_id integer not null, user_id integer not null, primary key (chat_id, user_id), foreign key (chat_id) references chats(id) on delete cascade, foreign key (user_id) references users(id) on delete cascade)")
+    cur.execute("create table if not exists messages (id integer primary key autoincrement, chat_id integer not null, sender_id integer not null, content text not null, sent_at datetime default current_timestamp, foreign key (chat_id) references chats(id) on delete cascade, foreign key (sender_id) references users(id) on delete cascade)")
+    cur.execute("create table if not exists files (id integer primary key autoincrement, chat_id integer not null, sender_id integer not null, file_name text not null, file_path text not null, sent_at datetime default current_timestamp, foreign key (chat_id) references chats(id) on delete cascade, foreign key (sender_id) references users(id) on delete cascade)")
     dbconn.commit()
 
 try:
@@ -47,6 +52,7 @@ def handle_client(conn, addr):
             if not username or not password:
                     send_json(conn, {"type": "error", "content": "Username and password required"})
             with sqlite3.connect("chatapp.db") as dbconn:
+                dbconn.execute("PRAGMA foreign_keys = ON")
                 cur = dbconn.cursor()
                 cur.execute("select id, password from users where username = ?",(username,))
                 exists_row = cur.fetchone()
