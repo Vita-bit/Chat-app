@@ -68,7 +68,7 @@ def main():
                 elif msg_type == "new_file":
                     chat_id = msg.get("chat_id")
                     if chat_id == current_chat_id:
-                        print(f"{msg.get('sender')} : File: {msg.get('file_name')} {msg.get('message_id')}   {msg.get('sent_at')}")
+                        print(f"{msg.get('sender')} : File: {msg.get('file_name')} [{msg.get('message_id')}]   {msg.get('sent_at')}")
                     else:
                         print(f"New file from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
                 elif msg_type == "closed_chat":
