@@ -10,6 +10,7 @@ def main():
     clients = {}
     clients_lock = threading.Lock()
     current_chats = {}
+    current_chats_lock = threading.Lock()
 
     def send_json(sock, message):
         try:
@@ -90,32 +91,38 @@ def main():
             cur.execute("select u.username as sender, m.content, m.sent_at from messages m join users u on m.sender_id = u.id where m.chat_id = ? order by m.sent_at desc limit 50", (chat_id,))
             rows = cur.fetchall()
             messages = [{"sender": r[0], "content": r[1], "sent_at": r[2]} for r in reversed(rows)]
-            current_chats[username] = chat_id
+            with current_chats_lock:
+                current_chats[username] = chat_id
             send_json(clients[username], {"type": "chat_open", "chat_id": chat_id, "messages": messages})
     def msg(user, content):
-        chat_id = current_chats.get(user)
+        with current_chats_lock:
+            chat_id = current_chats.get(user)
         if chat_id is None:
             send_json(clients[user], {"type": "error", "content": "No chat active"})
             return
-        with sqlite3.connect("chatapp.db") as dbconn:
-            cur = dbconn.cursor()
-            cur.execute("select id from users where username = ?", (user,))
-            sender_id = cur.fetchone()[0]
-            cur.execute("insert into messages (chat_id, sender_id, content) VALUES (?, ?, ?)",(chat_id, sender_id, content))
-            dbconn.commit()
-            cur.execute("select content, sent_at from messages where id = ?",(cur.lastrowid,))
-            sent_at_row = cur.fetchone()
-            message_to_send = {"sender": user, "content": sent_at_row[0], "sent_at": sent_at_row[1]}
-            cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?",(chat_id,))
-            users = cur.fetchall()
-            cur.execute("select name from chats where id = ?", (chat_id,))
-            chat_name_row = cur.fetchone()
-            chat_name = chat_name_row[0] if chat_name_row and chat_name_row[0] else None
-            msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": message_to_send.get('content'), "chat_name" : chat_name, "sent_at" : message_to_send.get('sent_at')}
-            for u in users:
-                target_user = u[0]
-                if target_user in clients:
-                    send_json(clients[target_user], msg_dict)
+        try:
+            with sqlite3.connect("chatapp.db") as dbconn:
+                cur = dbconn.cursor()
+                cur.execute("select id from users where username = ?", (user,))
+                sender_id = cur.fetchone()[0]
+                cur.execute("insert into messages (chat_id, sender_id, content) VALUES (?, ?, ?)",(chat_id, sender_id, content))
+                dbconn.commit()
+                cur.execute("select content, sent_at from messages where id = ?",(cur.lastrowid,))
+                sent_at_row = cur.fetchone()
+                message_to_send = {"sender": user, "content": sent_at_row[0], "sent_at": sent_at_row[1]}
+                cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?",(chat_id,))
+                users = cur.fetchall()
+                cur.execute("select name from chats where id = ?", (chat_id,))
+                chat_name_row = cur.fetchone()
+                chat_name = chat_name_row[0] if chat_name_row and chat_name_row[0] else None
+                msg_dict = {"type": "new_msg", "chat_id": chat_id, "sender": user, "content": message_to_send.get('content'), "chat_name" : chat_name, "sent_at" : message_to_send.get('sent_at')}
+                for u in users:
+                    target_user = u[0]
+                    if target_user in clients:
+                        send_json(clients[target_user], msg_dict)
+        except Exception as e:
+            print(f"Error sending message for {user}: {e}")
+            send_json(clients[user], {"type": "error", "content": "An error occurred while sending the message"})
 
     with sqlite3.connect("chatapp.db") as dbconn:
         dbconn.execute("PRAGMA foreign_keys = ON")
@@ -132,7 +139,6 @@ def main():
         def get_private_ip():
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
-                # Doesn't actually send data — just triggers routing table lookup
                 s.connect(("8.8.8.8", 80))
                 ip = s.getsockname()[0]
             finally:
@@ -171,6 +177,7 @@ def main():
                                 send_json(conn, {"type": "success", "content": "Successfully logged in"})
                             else:
                                 send_json(conn, {"type" : "disconnect", "content" : "Wrong password"})
+                                break
                         else:
                                 cur.execute("insert into users(username, password) values(?, ?)",(username,password))
                                 dbconn.commit()
@@ -192,7 +199,8 @@ def main():
                     elif json_type == "msg":
                         msg(username, message.get("content"))
                     elif json_type == "close_chat":
-                        current_chats[message.get('user')] = None
+                        with current_chats_lock:
+                            current_chats[message.get('user')] = None
                         send_json(clients[message.get('user')], {"type" : "closed_chat"})
         except Exception as e:
             print(f"Error with client {username}")
