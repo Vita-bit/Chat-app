@@ -9,7 +9,6 @@ def main():
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST, int(PORT)))
-    print("Type 'help' for commands")
 
     def send_json(sock, message):
         data = json.dumps(message).encode()
@@ -58,6 +57,8 @@ def main():
     username = input("Enter your username: ")
     password = input("Enter your password: ")
     send_json(s, {"type": "login", "username": username, "password": password})
+    send_json(s, {"type" : "get_chats", "user" : username})
+    print("\nType 'help' for commands")
 
     while True:
         comm = input("")
