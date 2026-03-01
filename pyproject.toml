@@ -16,11 +16,12 @@ classifiers = [
 
 dynamic = ["dependencies"]
 [tool.setuptools.dynamic]
+py-modules = ["app", "server"]
 dependencies = {file = ["requirements.txt"]}
 
 [project.scripts]
 start = "src.app:main"
-serverstart = "src.server:main"
+start = "src.server:main"
 
 [project.urls]
 Homepage = "https://github.com/Vita-bit/Chat-app"
