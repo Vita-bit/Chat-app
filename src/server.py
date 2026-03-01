@@ -248,6 +248,9 @@ def main():
                     elif json_type == "send_file":
                         file_name = message.get("file_name")
                         file_size = message.get("file_size")
+                        if not file_name or not file_size:
+                            send_json(clients[username], {"type": "error", "content": "Missing file metadata"})
+                            return
                         receive_file(message.get('sender'), file_name, file_size, clients[message.get('sender')])
         except Exception as e:
             print(f"Error with client {username}")
