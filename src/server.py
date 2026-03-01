@@ -24,7 +24,7 @@ def recv_json(sock):
         data += chunk
     return json.loads(data.decode())
 
-with sqlite3.connect("chatapp.db") as dbconn:
+with sqlite3.connect("db/chatapp.db") as dbconn:
     dbconn.execute("PRAGMA foreign_keys = ON")
     cur = dbconn.cursor()
     cur.execute("create table if not exists users (id integer primary key autoincrement, username text not null unique, password text not null)")
@@ -51,7 +51,7 @@ def handle_client(conn, addr):
             password = message.get("password")
             if not username or not password:
                     send_json(conn, {"type": "error", "content": "Username and password required"})
-            with sqlite3.connect("chatapp.db") as dbconn:
+            with sqlite3.connect("db/chatapp.db") as dbconn:
                 dbconn.execute("PRAGMA foreign_keys = ON")
                 cur = dbconn.cursor()
                 cur.execute("select id, password from users where username = ?",(username,))
