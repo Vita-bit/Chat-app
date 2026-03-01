@@ -72,7 +72,7 @@ def main():
                 user_id = user_id_row[0]
             else:
                 send_json(clients[user], {"type" : "error", "content" : "User not set"})
-            cur.execute("select c.id as chat_id, coalesce(c.name, u.username) as chat_name from chats c join chat_users cu on c.id = cu.chat_id join users u on u.id = cu.user_id where cu.chat_id in (select chat_id from chat_users where user_id = ?) and u.username != ? group by c.id",(user_id, user_id))
+            cur.execute("select c.id as chat_id, coalesce(c.name, (select u2.username from chat_users cu2 join users u2 on cu2.user_id = u2.id where cu2.chat_id = c.id and u2.id != ? limit 1)) as chat_name from chats c join chat_users cu on c.id = cu.chat_id where cu.user_id = ? group by c.id", (user_id, user_id))
             rows = cur.fetchall()
             ret = []
             for r in rows:
