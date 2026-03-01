@@ -7,8 +7,6 @@ Basic python chatting app where messages are sent to a server you can host anywh
     - Voice messages
     - Voice chat and calls
     - Sending files
-    - Modern GUI
-    - Video calls
 
 # Used libraries:
     - PyQT
@@ -17,5 +15,4 @@ Basic python chatting app where messages are sent to a server you can host anywh
     - asyncio
     - sounddevice
     - sqlite3
-    - pyngrok
     - FastAPI
