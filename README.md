@@ -16,6 +16,7 @@ Basic python chatting app where messages are sent to a server you can host anywh
 - sounddevice
 - sqlite3
 - FastAPI
+- requests
 
 # How to setup the server:
 1. Download the server module using pip
