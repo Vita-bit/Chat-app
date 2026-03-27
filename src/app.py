@@ -41,7 +41,6 @@ if __name__ == "__main__":
             os.system('clear')
 
     def listener():
-        nonlocal running, current_chat_id
         while running:
             try:
                 msg = recv_json(s)
