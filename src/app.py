@@ -53,7 +53,7 @@ if __name__ == "__main__":
                 self.prev_geometry = self.geometry()
                 self.setWindowState(QtCore.Qt.WindowMaximized)
 
-        def detect_edges(self, pos):
+        def __detect_edges__(self, pos):
             rect = self.rect()
             edges = QtCore.Qt.Edges()
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
             return edges
         
         def mouseMoveEvent(self, event):
-            edges = self.detect_edges(event.position().toPoint())
+            edges = self.__detect_edges__(event.position().toPoint())
 
             if edges == (QtCore.Qt.TopEdge | QtCore.Qt.LeftEdge) or edges == (QtCore.Qt.BottomEdge | QtCore.Qt.RightEdge):
                 self.setCursor(QtCore.Qt.SizeFDiagCursor)
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         
         def mousePressEvent(self, event):
             if event.button() == QtCore.Qt.LeftButton:
-                edges = self.detect_edges(event.position().toPoint())
+                edges = self.__detect_edges__(event.position().toPoint())
 
                 if edges:
                     self.windowHandle().startSystemResize(edges)
