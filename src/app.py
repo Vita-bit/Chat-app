@@ -2,6 +2,8 @@ import socket
 import json
 import threading
 import os
+import sys
+from PySide6 import QtCore, QtWidgets
 
 if __name__ == "__main__":
 
@@ -9,6 +11,53 @@ if __name__ == "__main__":
     PORT = input("Enter the port the server's running on: ")
     current_chat_id = None
     running = True
+    app = QtWidgets.QApplication(sys.argv)
+
+    class MainWindow(QtWidgets.QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.resize(900, 600)
+            self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
+            self.gripSize = 16
+            self.grips = []
+            for i in range(4):
+                grip = QtWidgets.QSizeGrip(self)
+                grip.resize(self.gripSize, self.gripSize)
+                self.grips.append(grip)
+            self.setWindowTitle("Chat App")
+            self.setStyleSheet("""
+                background-color: hsl(0, 0, 40);
+            """)
+        def __show__(self):
+            self.show()
+        def mousePressEvent(self, event):
+            if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                self.initial_pos = event.position().toPoint()
+            super().mousePressEvent(event)
+            event.accept()
+        def mouseMoveEvent(self, event):
+            if self.initial_pos is not None:
+                delta = event.position().toPoint() - self.initial_pos
+                self.window().move(
+                    self.window().x() + delta.x(),
+                    self.window().y() + delta.y(),
+                )
+            super().mouseMoveEvent(event)
+            event.accept()
+        def mouseReleaseEvent(self, event):
+            self.initial_pos = None
+            super().mouseReleaseEvent(event)
+            event.accept()
+        def resizeEvent(self, event):
+            self.initial_pos = None
+            QtWidgets.QMainWindow.resizeEvent(self, event)
+            rect = self.rect()
+            self.grips[1].move(rect.right() - self.gripSize, 0)
+            self.grips[2].move(rect.right() - self.gripSize, rect.bottom() - self.gripSize)
+            self.grips[3].move(0, rect.bottom() - self.gripSize)
+
+    main_window = MainWindow()
+    main_window.__show__()
 
     def send_json(socket, message):
         try:

@@ -15,14 +15,16 @@ if __name__ == "__main__":
     current_chats = {}
     current_chats_lock = threading.Lock()
 
-    def send_json(sock, message):
+    def send_json(socket, message):
         try:
             data = json.dumps(message).encode()
-            sock.sendall(len(data).to_bytes(4, "big"))
-            sock.sendall(data)
-        except (ConnectionResetError, BrokenPipeError):
+            socket.sendall(len(data).to_bytes(4, "big"))
+            socket.sendall(data)
+            return True
+        except Exception as e:
+            print(f"Error sending json to client - {e}")
             return False
-        return True
+    
     def recv_json(sock):
         try:
             length_bytes = sock.recv(4)
@@ -36,8 +38,10 @@ if __name__ == "__main__":
                     break
                 data += chunk
             return json.loads(data.decode())
-        except (ConnectionResetError, json.JSONDecodeError):
+        except Exception as e:
+            print(f"Error recieving json from client - {e}")
             return None
+        
     def create_chat(users, creator, conn, chat_name=None, is_group=False):
         is_group = len(users) + 1 > 2
         if not is_group and chat_name is None:
@@ -212,15 +216,22 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error sending file for user {user}: {e}")
             send_json(sock, {"type": "error", "content": "Failed to send file"})
-
-    with sqlite3.connect("chatapp.db") as dbconn:
-        dbconn.execute("PRAGMA foreign_keys = ON")
-        cur = dbconn.cursor()
-        cur.execute("create table if not exists users (id integer primary key autoincrement, username text not null unique, password text not null)")
-        cur.execute("create table if not exists chats (id integer primary key autoincrement, name text, is_group boolean not null default 0)")
-        cur.execute("create table if not exists chat_users (chat_id integer not null, user_id integer not null, primary key (chat_id, user_id), foreign key (chat_id) references chats(id) on delete cascade, foreign key (user_id) references users(id) on delete cascade)")
-        cur.execute("create table if not exists messages (id integer primary key autoincrement, chat_id integer not null, sender_id integer not null, content text, file_name text, file_path text, sent_at datetime default current_timestamp, foreign key (chat_id) references chats(id) on delete cascade, foreign key (sender_id) references users(id) on delete cascade)")
-        dbconn.commit()
+    def sql_init():
+        try:
+            with sqlite3.connect("chatapp.db") as dbconn:
+                dbconn.execute("PRAGMA foreign_keys = ON")
+                cur = dbconn.cursor()
+                cur.execute("create table if not exists users (id integer primary key autoincrement, username text not null unique, password text not null)")
+                cur.execute("create table if not exists chats (id integer primary key autoincrement, name text, is_group boolean not null default 0)")
+                cur.execute("create table if not exists chat_users (chat_id integer not null, user_id integer not null, primary key (chat_id, user_id), foreign key (chat_id) references chats(id) on delete cascade, foreign key (user_id) references users(id) on delete cascade)")
+                cur.execute("create table if not exists messages (id integer primary key autoincrement, chat_id integer not null, sender_id integer not null, content text, file_name text, file_path text, sent_at datetime default current_timestamp, foreign key (chat_id) references chats(id) on delete cascade, foreign key (sender_id) references users(id) on delete cascade)")
+                dbconn.commit()
+                return True
+        except Exception as e:
+            print(f"Error while initializing database - {e}")
+            return False
+        
+    sql_init()
 
     try:
         response = requests.get("https://api.ipify.org")
