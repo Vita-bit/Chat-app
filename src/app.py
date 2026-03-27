@@ -18,8 +18,9 @@ if __name__ == "__main__":
             super().__init__()
             self.resize(900, 600)
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
-            self.resize_margin = 10
             self.setWindowTitle("Chat App")
+            self.setMouseTracking(True)
+            self.resize_margin = 15
             self.setStyleSheet("""
                 background-color: hsl(0, 0, 40);
             """)
