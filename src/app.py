@@ -16,7 +16,8 @@ if __name__ == "__main__":
     class MainWindow(QtWidgets.QMainWindow):
         def __init__(self):
             super().__init__()
-            self.resize(900, 600)
+            self.resize(900, 800)
+            self.setMinimumSize(700, 800)
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
             self.setWindowTitle("Chat App")
             self.setMouseTracking(True)
@@ -70,7 +71,15 @@ if __name__ == "__main__":
                     self.windowHandle().startSystemResize(edges)
                 else:
                     self.windowHandle().startSystemMove()
-        
+
+    class CustomTitleBar(QtWidgets.QWidget):
+        def __init__(self):
+            super().__init__()
+            self.title = "Chat App"
+            #self.icon = 
+
+        def __show__(self):
+            self.show()
 
     main_window = MainWindow()
     main_window.__show__()
