@@ -3,7 +3,7 @@ import json
 import threading
 import os
 import sys
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets, QtGui
 
 if __name__ == "__main__":
 
@@ -16,7 +16,6 @@ if __name__ == "__main__":
     class MainWindow(QtWidgets.QMainWindow):
         def __init__(self):
             super().__init__()
-            self.resize(900, 800)
             self.setMinimumSize(700, 800)
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
             self.setWindowTitle("Chat App")
@@ -26,8 +25,27 @@ if __name__ == "__main__":
                 background-color: hsl(0, 0, 40);
             """)
 
+        def __center_on_screen__(self):
+            resolution = QtGui.QScreen.availableSize(QtGui.QGuiApplication.primaryScreen())
+            self.move((resolution.width() / 2) - (self.frameSize().width() / 2), (resolution.height() / 2) - (self.frameSize().height() / 2))
+
         def __show__(self):
+            self.setGeometry(0, 0, 700, 800)
+            self.__center_on_screen__()
+            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
             self.show()
+            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, False)
+            self.show()
+
+        def __close__(self):
+            self.setWindowState(QtCore.Qt.WindowNoState)
+            self.close()
+
+        def __minimize__(self):
+            self.setWindowState(QtCore.Qt.WindowMinimized)
+
+        def __maximize__(self):
+            self.setWindowState(QtCore.Qt.WindowMaximized)
 
         def detect_edges(self, pos):
             rect = self.rect()
@@ -82,7 +100,19 @@ if __name__ == "__main__":
             self.show()
 
     main_window = MainWindow()
-    main_window.__show__()
+
+    while True:
+        test = input()
+        if test == "open":
+            main_window.__show__()
+        elif test == "close":
+            main_window.__close__()
+        elif test == "min":
+            main_window.__minimize__()
+        elif test == "max":
+            main_window.__maximize__()
+        else:
+            print("Invalid")
 
     """def send_json(socket, message):
         try:
