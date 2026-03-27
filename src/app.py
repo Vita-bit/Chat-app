@@ -59,7 +59,7 @@ if __name__ == "__main__":
     main_window = MainWindow()
     main_window.__show__()
 
-    def send_json(socket, message):
+    """def send_json(socket, message):
         try:
             data = json.dumps(message).encode()
             socket.sendall(len(data).to_bytes(4, "big"))
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     username = input("Enter your username: ")
     password = input("Enter your password: ")
     send_json(s, {"type": "login", "username": username, "password": password})
-    print("\nType 'help' for commands")
+    print("\nType 'help' for commands")"""
 
     while running:
         if not running:
