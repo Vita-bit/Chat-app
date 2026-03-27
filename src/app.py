@@ -43,7 +43,7 @@ if __name__ == "__main__":
             self.close()
 
         def __minimize__(self):
-            self.setWindowState(QtCore.Qt.WindowMinimized)
+            self.showMinimized()
 
         def __maximize__(self):
             if self.isMaximized():
