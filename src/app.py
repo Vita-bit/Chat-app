@@ -30,6 +30,7 @@ if __name__ == "__main__":
             self.move((self.screen_res.width() / 2) - (self.frameSize().width() / 2), (self.screen_res.height() / 2) - (self.frameSize().height() / 2))
 
         def __show__(self):
+            self.setWindowState(QtCore.Qt.WindowNoState)
             self.setGeometry(0, 0, 700, 800)
             self.__center_on_screen__()
             self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
