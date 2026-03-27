@@ -6,7 +6,7 @@ import threading
 import os
 import uuid
 
-def main():
+if __name__ == "__main__":
     PORT = input("Enter the port for the server to run on: ")
     HOST = "0.0.0.0"
     os.makedirs("files", exist_ok=True)
@@ -325,5 +325,3 @@ def main():
         while True:
             conn, addr = s.accept()
             threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
-
-main()
