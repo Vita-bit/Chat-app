@@ -3,38 +3,43 @@ import json
 import threading
 import os
 
-def main():
+if __name__ == "__main__":
+
     HOST = input("Enter server's public / private IP address: ")
     PORT = input("Enter the port the server's running on: ")
     current_chat_id = None
     running = True
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((HOST, int(PORT)))
-
-    def send_json(sock, message):
+    def send_json(socket, message):
         try:
             data = json.dumps(message).encode()
-            sock.sendall(len(data).to_bytes(4, "big"))
-            sock.sendall(data)
-        except (ConnectionResetError, BrokenPipeError):
+            socket.sendall(len(data).to_bytes(4, "big"))
+            socket.sendall(data)
+        except Exception as e:
+            print(f"Error sending json to server - {e}")
             return False
         return True
-    def recv_json(sock):
-        length_bytes = sock.recv(4)
-        length = int.from_bytes(length_bytes, "big")
-        data = b""
-        while len(data) < length:
-            chunk = sock.recv(length - len(data))
-            if not chunk:
-                break
-            data += chunk
-        return json.loads(data.decode())
+
+    def recv_json(socket):
+        try:
+            length_bytes = socket.recv(4)
+            length = int.from_bytes(length_bytes, "big")
+            data = b""
+            while len(data) < length:
+                chunk = socket.recv(length - len(data))
+                if not chunk:
+                    break
+                data += chunk
+            return json.loads(data.decode())
+        except Exception as e:
+            print(f"Error recieving message from server - {e}")
+
     def clear_console():
         if os.name == 'nt':
             os.system('cls')
         else:
             os.system('clear')
+
     def listener():
         nonlocal running, current_chat_id
         while running:
@@ -96,6 +101,9 @@ def main():
             except Exception as e:
                 print("Error receiving message:", e)
                 running = False
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((HOST, int(PORT)))
     threading.Thread(target=listener, daemon=True).start()
 
     username = input("Enter your username: ")
@@ -180,5 +188,3 @@ def main():
                         print(f"Error while trying to download file: {e}")
             else:
                 print("Invalid command")
-
-main()
