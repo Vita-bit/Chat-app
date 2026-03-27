@@ -46,7 +46,12 @@ if __name__ == "__main__":
             self.setWindowState(QtCore.Qt.WindowMinimized)
 
         def __maximize__(self):
-            self.setWindowState(QtCore.Qt.WindowMaximized)
+            self.prev_geometry = self.geometry()
+            if self.windowState() == QtCore.Qt.WindowMaximized:
+                self.setWindowState(QtCore.Qt.WindowNoState)
+                self.setGeometry(self.prev_geometry)
+            else:
+                self.setWindowState(QtCore.Qt.WindowMaximized)
 
         def detect_edges(self, pos):
             rect = self.rect()
