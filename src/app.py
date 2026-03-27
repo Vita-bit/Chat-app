@@ -16,6 +16,7 @@ if __name__ == "__main__":
     class MainWindow(QtWidgets.QMainWindow):
         def __init__(self):
             super().__init__()
+            self.screen_res = QtGui.QScreen.availableSize(QtGui.QGuiApplication.primaryScreen())
             self.setMinimumSize(700, 800)
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
             self.setWindowTitle("Chat App")
@@ -26,8 +27,7 @@ if __name__ == "__main__":
             """)
 
         def __center_on_screen__(self):
-            resolution = QtGui.QScreen.availableSize(QtGui.QGuiApplication.primaryScreen())
-            self.move((resolution.width() / 2) - (self.frameSize().width() / 2), (resolution.height() / 2) - (self.frameSize().height() / 2))
+            self.move((self.screen_res.width() / 2) - (self.frameSize().width() / 2), (self.screen_res.height() / 2) - (self.frameSize().height() / 2))
 
         def __show__(self):
             self.setGeometry(0, 0, 700, 800)
