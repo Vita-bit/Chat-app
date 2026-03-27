@@ -18,43 +18,58 @@ if __name__ == "__main__":
             super().__init__()
             self.resize(900, 600)
             self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
-            self.gripSize = 16
-            self.grips = []
-            for i in range(4):
-                grip = QtWidgets.QSizeGrip(self)
-                grip.resize(self.gripSize, self.gripSize)
-                self.grips.append(grip)
+            self.resize_margin = 10
             self.setWindowTitle("Chat App")
             self.setStyleSheet("""
                 background-color: hsl(0, 0, 40);
             """)
+
         def __show__(self):
             self.show()
-        def mousePressEvent(self, event):
-            if event.button() == QtCore.Qt.MouseButton.LeftButton:
-                self.initial_pos = event.position().toPoint()
-            super().mousePressEvent(event)
-            event.accept()
-        def mouseMoveEvent(self, event):
-            if self.initial_pos is not None:
-                delta = event.position().toPoint() - self.initial_pos
-                self.window().move(
-                    self.window().x() + delta.x(),
-                    self.window().y() + delta.y(),
-                )
-            super().mouseMoveEvent(event)
-            event.accept()
-        def mouseReleaseEvent(self, event):
-            self.initial_pos = None
-            super().mouseReleaseEvent(event)
-            event.accept()
-        def resizeEvent(self, event):
-            self.initial_pos = None
-            QtWidgets.QMainWindow.resizeEvent(self, event)
+
+        def detect_edges(self, pos):
             rect = self.rect()
-            self.grips[1].move(rect.right() - self.gripSize, 0)
-            self.grips[2].move(rect.right() - self.gripSize, rect.bottom() - self.gripSize)
-            self.grips[3].move(0, rect.bottom() - self.gripSize)
+            edges = QtCore.Qt.Edges()
+
+            left = pos.x() < self.resize_margin
+            right = pos.x() > rect.width() - self.resize_margin
+            top = pos.y() < self.resize_margin
+            bottom = pos.y() > rect.height() - self.resize_margin
+
+            if left:
+                edges |= QtCore.Qt.LeftEdge
+            if right:
+                edges |= QtCore.Qt.RightEdge
+            if top:
+                edges |= QtCore.Qt.TopEdge
+            if bottom:
+                edges |= QtCore.Qt.BottomEdge
+
+            return edges
+        
+        def mouseMoveEvent(self, event):
+            edges = self.detect_edges(event.position().toPoint())
+
+            if edges == (QtCore.Qt.TopEdge | QtCore.Qt.LeftEdge) or edges == (QtCore.Qt.BottomEdge | QtCore.Qt.RightEdge):
+                self.setCursor(QtCore.Qt.SizeFDiagCursor)
+            elif edges == (QtCore.Qt.TopEdge | QtCore.Qt.RightEdge) or edges == (QtCore.Qt.BottomEdge | QtCore.Qt.LeftEdge):
+                self.setCursor(QtCore.Qt.SizeBDiagCursor)
+            elif edges & (QtCore.Qt.TopEdge | QtCore.Qt.BottomEdge):
+                self.setCursor(QtCore.Qt.SizeVerCursor)
+            elif edges & (QtCore.Qt.LeftEdge | QtCore.Qt.RightEdge):
+                self.setCursor(QtCore.Qt.SizeHorCursor)
+            else:
+                self.setCursor(QtCore.Qt.ArrowCursor)
+        
+        def mousePressEvent(self, event):
+            if event.button() == QtCore.Qt.LeftButton:
+                edges = self.detect_edges(event.position().toPoint())
+
+                if edges:
+                    self.windowHandle().startSystemResize(edges)
+                else:
+                    self.windowHandle().startSystemMove()
+        
 
     main_window = MainWindow()
     main_window.__show__()
