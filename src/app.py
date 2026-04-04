@@ -7,8 +7,8 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 if __name__ == "__main__":
 
-    HOST = input("Enter server's public / private IP address: ")
-    PORT = input("Enter the port the server's running on: ")
+    #HOST = input("Enter server's public / private IP address: ")
+    #PORT = input("Enter the port the server's running on: ")
     current_chat_id = None
     running = True
     app = QtWidgets.QApplication(sys.argv)
@@ -18,10 +18,15 @@ if __name__ == "__main__":
             super().__init__()
             self.screen_res = QtGui.QScreen.availableSize(QtGui.QGuiApplication.primaryScreen())
             self.setMinimumSize(700, 800)
-            self.setWindowFlag(QtCore.Qt.FramelessWindowHint)
             self.setWindowTitle("Chat App")
             self.setMouseTracking(True)
             self.resize_margin = 15
+            self.central_widget = QtWidgets.QWidget()
+            self.setCentralWidget(self.central_widget)
+            self.layout = QtWidgets.QHBoxLayout()
+            self.central_widget.setLayout(self.layout)
+            self.layout.setContentsMargins(0, 0, 0, 0)
+            self.layout.setSpacing(0)
             self.setStyleSheet("""
                 background-color: hsl(0, 0, 40);
             """)
@@ -38,87 +43,21 @@ if __name__ == "__main__":
             self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, False)
             self.show()
 
-        def __close__(self):
-            self.setWindowState(QtCore.Qt.WindowNoState)
-            self.close()
-
-        def __minimize__(self):
-            self.showMinimized()
-
-        def __maximize__(self):
-            if self.isMaximized():
-                self.setWindowState(QtCore.Qt.WindowNoState)
-                self.setGeometry(self.prev_geometry)
-            else:
-                self.prev_geometry = self.geometry()
-                self.showMaximized()
-
-        def __detect_edges__(self, pos):
-            rect = self.rect()
-            edges = QtCore.Qt.Edges()
-
-            left = pos.x() < self.resize_margin
-            right = pos.x() > rect.width() - self.resize_margin
-            top = pos.y() < self.resize_margin
-            bottom = pos.y() > rect.height() - self.resize_margin
-
-            if left:
-                edges |= QtCore.Qt.LeftEdge
-            if right:
-                edges |= QtCore.Qt.RightEdge
-            if top:
-                edges |= QtCore.Qt.TopEdge
-            if bottom:
-                edges |= QtCore.Qt.BottomEdge
-
-            return edges
-        
-        def mouseMoveEvent(self, event):
-            edges = self.__detect_edges__(event.position().toPoint())
-
-            if edges == (QtCore.Qt.TopEdge | QtCore.Qt.LeftEdge) or edges == (QtCore.Qt.BottomEdge | QtCore.Qt.RightEdge):
-                self.setCursor(QtCore.Qt.SizeFDiagCursor)
-            elif edges == (QtCore.Qt.TopEdge | QtCore.Qt.RightEdge) or edges == (QtCore.Qt.BottomEdge | QtCore.Qt.LeftEdge):
-                self.setCursor(QtCore.Qt.SizeBDiagCursor)
-            elif edges & (QtCore.Qt.TopEdge | QtCore.Qt.BottomEdge):
-                self.setCursor(QtCore.Qt.SizeVerCursor)
-            elif edges & (QtCore.Qt.LeftEdge | QtCore.Qt.RightEdge):
-                self.setCursor(QtCore.Qt.SizeHorCursor)
-            else:
-                self.setCursor(QtCore.Qt.ArrowCursor)
-        
-        def mousePressEvent(self, event):
-            if event.button() == QtCore.Qt.LeftButton:
-                edges = self.__detect_edges__(event.position().toPoint())
-
-                if edges:
-                    self.windowHandle().startSystemResize(edges)
-                else:
-                    self.windowHandle().startSystemMove()
-
-    class CustomTitleBar(QtWidgets.QWidget):
-        def __init__(self):
-            super().__init__()
-            self.title = "Chat App"
-            #self.icon = 
-
-        def __show__(self):
-            self.show()
-
     main_window = MainWindow()
 
-    while True:
-        test = input()
-        if test == "open":
-            main_window.__show__()
-        elif test == "close":
-            main_window.__close__()
-        elif test == "min":
-            main_window.__minimize__()
-        elif test == "max":
-            main_window.__maximize__()
-        else:
-            print("Invalid")
+    left_panel = QtWidgets.QFrame()
+    left_panel.setStyleSheet("background-color: hsl(0, 0, 60);")
+    left_panel.setFixedWidth(300)
+
+    right_panel = QtWidgets.QFrame()
+    right_panel.setStyleSheet("background-color: hsl(0, 0, 20);")
+    right_panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+    # --- Add widgets to the horizontal layout ---
+    main_window.layout.addWidget(left_panel)
+    main_window.layout.addWidget(right_panel)
+
+    main_window.__show__()
 
     """def send_json(socket, message):
         try:
