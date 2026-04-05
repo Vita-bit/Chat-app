@@ -330,7 +330,6 @@ if __name__ == "__main__":
         print("Could not determine public IP")
 
     def handle_client(conn, addr):
-        buffer = ""
         username = None
         try:
             while True:

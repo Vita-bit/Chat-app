@@ -14,6 +14,7 @@ class AppSignals(QtCore.QObject):
     file_received = QtCore.Signal(str, str, int, str, bool)
     file_download_ready = QtCore.Signal(str, str)
     logged_out = QtCore.Signal()
+    server_message = QtCore.Signal(str, str)
 
 class ChatItem(QtWidgets.QFrame):
     def __init__(self, chat_name, last_message, chat_id):
@@ -143,7 +144,6 @@ class PasswordChangeWindow(QtWidgets.QWidget):
             "old_password": old_pw,
             "new_password": new_pw
         })
-        QtWidgets.QMessageBox.information(self, "Success", "Password change requested")
         self.close()
 
 class LeftPanel(QtWidgets.QWidget):
@@ -240,6 +240,14 @@ class LeftPanel(QtWidgets.QWidget):
             send_json(s, {"type": "logout", "username": username})
             app_signals.logged_out.emit()
 
+    def update_last_message(self, chat_id, content):
+        for i in range(self.scroll_layout.count()):
+            item = self.scroll_layout.itemAt(i).widget()
+            if isinstance(item, ChatItem) and item.chat_id == chat_id:
+                text = content if len(content) <= 45 else content[:42] + "..."
+                item.message_label.setText(text)
+                break
+
     def add_chat(self, chat_name, last_message, chat_id):
         if not last_message:
             last_message = "Start the conversation"
@@ -290,6 +298,7 @@ class ChatPanel(QtWidgets.QWidget):
         input_layout = QtWidgets.QHBoxLayout()
         self.message_input = QtWidgets.QLineEdit()
         self.message_input.returnPressed.connect(self._send_clicked)
+        self.message_input.setPlaceholderText("Type a message...")
 
         self.send_button = QtWidgets.QPushButton("Send")
         self.send_button.setStyleSheet("""
@@ -396,7 +405,6 @@ class NewChatWindow(QtWidgets.QWidget):
         self.setWindowTitle("Create New Chat")
         self.setFixedSize(400, 500)
         self.owner_username = owner_username
-        self.selected_users = set()
 
         self.setStyleSheet("""
             QWidget { background-color: hsl(0,0,60); color: white; }
@@ -480,7 +488,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setMinimumSize(700, 800)
         self.setWindowTitle("Chat App")
         self.setMouseTracking(True)
-        self.resize_margin = 15
         self.central_widget = QtWidgets.QWidget()
         self.central_widget.setStyleSheet("""
                 background-color: hsl(0, 0, 40);
@@ -500,9 +507,6 @@ class MainWindow(QtWidgets.QMainWindow):
             item = self.left_panel.scroll_layout.itemAt(i).widget()
             if isinstance(item, ChatItem):
                 item.mousePressEvent = lambda e, chat_id=item.chat_id: self.open_chat(chat_id)
-
-    def __center_on_screen__(self):
-        self.move(int((self.screen_res.width() / 2) - (self.frameSize().width() / 2)), int((self.screen_res.height() / 2) - (self.frameSize().height() / 2)))
 
     def send_message_to_server(self, chat_id, content):
         if not s:
@@ -738,7 +742,8 @@ def listener():
             msg_type = msg.get("type")
 
             if msg_type == "success" or msg_type == "error":
-                print(f"{msg.get('content')}")
+                level = "info" if msg_type == "success" else "error"
+                app_signals.server_message.emit(level, msg.get("content", ""))
 
             elif msg_type == "loginsuccess":
                 login_window.login_success.emit(msg.get("content"))
@@ -838,6 +843,14 @@ def handle_login_success(user):
     )
     app_signals.file_download_ready.connect(_handle_download)
 
+    app_signals.server_message.connect(lambda level, content:
+        QtWidgets.QMessageBox.warning(main_window, "Success" if level == "info" else "Error", content)
+    ) 
+
+    app_signals.new_message.connect(lambda sender, content, me:
+        main_window.left_panel.update_last_message(current_chat_id, content)
+    )
+   
     send_json(s, {"type": "get_chats", "user": username})
 
 def do_logout():
@@ -857,6 +870,8 @@ def do_logout():
     try: app_signals.file_received.disconnect()
     except: pass
     try: app_signals.file_download_ready.disconnect()
+    except: pass
+    try: app_signals.server_message.disconnect()
     except: pass
 
     connect_window = ConnectWindow()
@@ -890,7 +905,6 @@ if __name__ == "__main__":
     main_window = None
     current_chat_id = None
     username = None
-    running = True
     app = QtWidgets.QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
 
@@ -899,83 +913,5 @@ if __name__ == "__main__":
     connect_window = ConnectWindow()
     connect_window.connected.connect(start_login)
     connect_window.show()
-
-    """while running:
-        if not running:
-            break
-        comm = input("").strip()
-        if comm == "help":
-            print("get_chats - prints all your chats\ncreate_chat [username1] [username2] [usernameN] [group/chat name (no spaces allowed)] - creates a chat with another user\nopen_chat [chat_id] - opens chat and prints the last 50 messages\nmsg [content] - sends a message in the currently open chat\nclose_chat - closes the currently active chat\nlogout - logs you out and closes app\nclear - clears the console\nsend_file [file path to the file] - sends a file in the current chat\ndownload_file [file id] downloads the file to the files directory")
-        else:
-            args = comm.split(" ")
-            if args[0] == "create_chat":
-                if len(args) < 2:
-                    print("You must enter at least one username")
-                elif len(args) > 2:
-                    users = args[1:-1]
-                    chat_name = args[-1]
-                elif len(args) == 2:
-                    users = [args[1]]
-                    chat_name = None
-                send_json(s, {"type" : "create_chat", "creator" : username, "users" : users, "name" : chat_name})
-            elif args[0] == "get_chats":
-                if len(args) > 1:
-                    print("Too many arguments")
-                else:
-                    send_json(s, {"type" : "get_chats", "user" : username})
-            elif args[0] == "open_chat":
-                if len(args) < 2:
-                    print("You must specify chat id")
-                elif len(args) > 2:
-                    print("Too many arguments")
-                else:
-                    send_json(s, {"type" : "open_chat", "chat_id" : args[1]})
-            elif args[0] == "msg":
-                if len(args) < 2:
-                    print("You must enter some content")
-                else:
-                    content = " ".join(args[1:])
-                    send_json(s, {"type": "msg", "content": content})
-            elif args[0] == "close_chat":
-                send_json(s, {"type" : "close_chat", "user" : username})
-            elif args[0] == "logout":
-                running = False
-            elif args[0] == "clear":
-                clear_console()
-            elif args[0] == "send_file":
-                if not current_chat_id:
-                    print("No chat currently open. Use open_chat first.")
-                    continue
-                if len(args) != 2:
-                    print("send_file accepts exactly one argument: the file path")
-                    continue
-                file_path = args[1]
-                if not os.path.exists(file_path):
-                    print("File does not exist")
-                    continue
-                file_name = os.path.basename(file_path)
-                file_size = os.path.getsize(file_path)
-                send_json(s, {"type": "send_file", "sender": username, "chat_id": current_chat_id, "file_name": file_name, "file_size": file_size})
-                try:
-                    with open(file_path, "rb") as f:
-                        while chunk := f.read(4096):
-                            s.sendall(chunk)
-                    print(f"Sent file {file_name} ({file_size} bytes)")
-                except Exception as e:
-                    print(f"Error sending file: {e}")
-            elif args[0] == "download_file":
-                if len(args) != 2:
-                    print("download_file accepts exactly one argument: the message id")
-                else: 
-                    if not current_chat_id:
-                        print("No chat currently open. Use open_chat first.")
-                        continue
-                    try:
-                        os.makedirs("files", exist_ok=True)
-                        send_json(s, {"type" : "request_download", "file_id" : args[1], "chat_id" : current_chat_id})
-                    except Exception as e:
-                        print(f"Error while trying to download file: {e}")
-            else:
-                print("Invalid command")"""
 
     sys.exit(app.exec())

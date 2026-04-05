@@ -4,25 +4,19 @@ Basic python chatting app where messages are sent to a server you can host anywh
 
 ## Functions:
 - Basic chat with messages
-- Voice messages
-- Voice chat and calls
 - Sending files
+- PySide6 GUI
 
 ## Used libraries:
-- PyQT
-- opencv
-- aiortc
-- asyncio
-- sounddevice
+- PySide6
 - sqlite3
-- FastAPI
 - requests
 
 ## How to setup the server:
 1. Download the server module using pip
 2. Run 
     ```bash
-    python -m server start
+    python -m src.server
     ```
 3. Enter the port you want to run the server on (if you want to connect through the internet make sure you have port forwarding on)
 4. Share the private IP address if the users are on the same network and the public IP if you're connecting through the internet
@@ -31,7 +25,7 @@ Basic python chatting app where messages are sent to a server you can host anywh
 1. Download the app module using pip
 2. Run:
     ```bash
-    python -m app start
+    python -m src.app
     ```
 3. Enter the private / public IP of the server you want to connect to
 4. Enter the port the server is running on

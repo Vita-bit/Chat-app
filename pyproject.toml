@@ -14,14 +14,15 @@ classifiers = [
     "Operating System :: Windows",
 ]
 
-dynamic = ["dependencies"]
 [tool.setuptools.dynamic]
-py-modules = ["app", "server"]
 dependencies = {file = ["requirements.txt"]}
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.scripts]
-startapp = "src.app:main"
-startserver = "src.server:main"
+startapp = "app:main"
+startserver = "server:main"
 
 [project.urls]
 Homepage = "https://github.com/Vita-bit/Chat-app"
