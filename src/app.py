@@ -3,10 +3,19 @@ import json
 import threading
 import os
 import sys
+import base64
 from PySide6 import QtCore, QtWidgets, QtGui
 
+class AppSignals(QtCore.QObject):
+    chats_received = QtCore.Signal(list)
+    chat_created = QtCore.Signal(str, str, int)
+    chat_opened = QtCore.Signal(int, list)
+    new_message = QtCore.Signal(str, str, bool)
+    file_received = QtCore.Signal(str, str, int, str, bool)
+    file_download_ready = QtCore.Signal(str, str)
+
 class ChatItem(QtWidgets.QFrame):
-    def __init__(self, chat_name, last_message, chat_id, avatar_bytes = None):
+    def __init__(self, chat_name, last_message, chat_id):
         super().__init__()
         self.chat_id = chat_id
         self.setFixedHeight(70)
@@ -15,19 +24,6 @@ class ChatItem(QtWidgets.QFrame):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(10, 5, 10, 5)
         layout.setSpacing(10)
-
-        self.avatar_label = QtWidgets.QLabel()
-        self.avatar_label.setFixedSize(50, 50)
-        if avatar_bytes:
-            pixmap = QtGui.QPixmap()
-            pixmap.loadFromData(avatar_bytes)
-            pixmap = pixmap.scaled(50, 50, QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
-        else:
-            pixmap = QtGui.QPixmap(50, 50)
-            pixmap.fill(QtGui.QColor("gray"))
-        self.avatar_label.setPixmap(pixmap)
-        self.avatar_label.setScaledContents(True)
-        layout.addWidget(self.avatar_label)
 
         text_layout = QtWidgets.QVBoxLayout()
         text_layout.setContentsMargins(0, 0, 10, 0)
@@ -62,6 +58,44 @@ class ChatItem(QtWidgets.QFrame):
                 background-color: transparent;               
             }
         """)
+
+class FileMessageWidget(QtWidgets.QFrame):
+    def __init__(self, sender, file_name, message_id, sent_at, me=False):
+        super().__init__()
+        self.message_id = message_id
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
+
+        name_label = QtWidgets.QLabel(f"<b>{sender}</b>")
+        name_label.setStyleSheet("color: white;")
+        layout.addWidget(name_label)
+
+        file_label = QtWidgets.QLabel(file_name)
+        file_label.setStyleSheet("color: white;")
+        file_label.setWordWrap(True)
+        layout.addWidget(file_label)
+
+        time_label = QtWidgets.QLabel(f"<small>{sent_at}</small>")
+        time_label.setStyleSheet("color: rgba(255,255,255,0.6);")
+        layout.addWidget(time_label)
+
+        download_btn = QtWidgets.QPushButton("Download")
+        download_btn.setStyleSheet("""
+            QPushButton { background-color: rgba(255,255,255,0.2); color:white; border-radius:4px; padding: 4px 8px; }
+            QPushButton:hover { background-color: rgba(255,255,255,0.35); }
+        """)
+        download_btn.clicked.connect(lambda: send_json(s, {
+            "type": "request_download",
+            "file_id": message_id,
+            "chat_id": main_window.chat_panel.current_chat_id
+        }))
+        layout.addWidget(download_btn)
+
+        bg = "#2e86de" if me else "hsl(0,0,30)"
+        self.setStyleSheet(f"QFrame {{ background-color:{bg}; border-radius:8px; margin:2px; }}")
 
 class PasswordChangeWindow(QtWidgets.QWidget):
     def __init__(self, username):
@@ -163,34 +197,60 @@ class LeftPanel(QtWidgets.QWidget):
         bottom_layout.setContentsMargins(10, 5, 10, 5)
 
         self.username_label = QtWidgets.QLabel(username if username else "Username")
-        self.username_label.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        self.username_label.setStyleSheet("font-weight: bold; font-size: 12pt; padding-left: 8px;")
         self.username_label.setMinimumWidth(50)
         self.username_label.setMaximumWidth(130)
+        self.username_label.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft)
         self.username_label.setText(self.username_label.fontMetrics().elidedText(username, QtCore.Qt.ElideRight, 200))
         bottom_layout.addWidget(self.username_label)
 
         bottom_layout.addStretch()
 
-        self.edit_password_btn = QtWidgets.QPushButton("Change Password")
-        self.edit_password_btn.setFixedSize(120, 30)
-        self.edit_password_btn.setStyleSheet("""
-            QPushButton {
-                background-color: hsl(213, 100%, 50%);
-                font-size: 9pt;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: hsl(213, 100%, 60%);
-            }
+        self.menu_btn = QtWidgets.QPushButton("☰")
+        self.menu_btn.setFixedSize(36, 36)
+        self.menu_btn.setStyleSheet("""
+            QPushButton { background-color: transparent; color: white; font-size: 18pt; border-radius: 5px; }
+            QPushButton:hover { background-color: hsl(0,0,60); }
         """)
-        self.edit_password_btn.clicked.connect(self.open_password_window)
-        bottom_layout.addWidget(self.edit_password_btn)
+        self.menu_btn.clicked.connect(self.open_menu)
+        bottom_layout.addWidget(self.menu_btn)
 
         main_layout.addWidget(self.bottom_bar)
 
+    def open_menu(self):
+        menu = QtWidgets.QMenu(self)
+        menu.setStyleSheet("""
+            QMenu { background-color: hsl(0,0,50); color: white; border: 1px solid hsl(0,0,40); padding: 4px; }
+            QMenu::item { padding: 8px 20px; border-radius: 4px; }
+            QMenu::item:selected { background-color: hsl(213,100%,50%); }
+        """)
+        change_pw_action = menu.addAction("Change Password")
+        menu.addSeparator()
+        logout_action = menu.addAction("Logout")
+
+        action = menu.exec(self.menu_btn.mapToGlobal(
+            QtCore.QPoint(0, -menu.sizeHint().height())
+        ))
+
+        if action == change_pw_action:
+            self.pw_window = PasswordChangeWindow(username)
+            self.pw_window.show()
+        elif action == logout_action:
+            send_json(s, {"type": "logout", "username": username})
+            QtWidgets.QApplication.quit()
+
     def add_chat(self, chat_name, last_message, chat_id):
+        if not last_message:
+            last_message = "Start the conversation"
+        if len(last_message) > 45:
+            last_message = last_message[:42] + "..."
         chat_item = ChatItem(chat_name, last_message, chat_id)
+        chat_item.mousePressEvent = lambda e, cid=chat_id: main_window.open_chat(cid)
         self.scroll_layout.insertWidget(self.scroll_layout.count()-1, chat_item)
+
+    def open_chat(self, chat_id):
+        self.chat_panel.open_chat(chat_id)
+        send_json(s, {"type": "open_chat", "chat_id": chat_id})
 
     def update_chats(self, chats):
         for c in chats:
@@ -200,13 +260,14 @@ class LeftPanel(QtWidgets.QWidget):
             self.add_chat(name, last_message, chat_id)
         
     def open_new_chat_window(self):
-        self.new_chat_window = NewChatWindow([], username)
-        self.new_chat_window.show()
-        send_json(s, {"type": "get_users"})
+        if hasattr(self, "new_chat_window") and self.new_chat_window.isVisible():
+            self.new_chat_window.raise_()
+            return
 
-    def open_password_window(self):
-        self.pw_window = PasswordChangeWindow(username)
-        self.pw_window.show()
+        self.new_chat_window = NewChatWindow(all_users if 'all_users' in globals() else [], username)
+        self.new_chat_window.show()
+
+        send_json(s, {"type": "get_users"})
 
 class ChatPanel(QtWidgets.QWidget):
     def __init__(self, send_callback=None):
@@ -227,11 +288,26 @@ class ChatPanel(QtWidgets.QWidget):
 
         input_layout = QtWidgets.QHBoxLayout()
         self.message_input = QtWidgets.QLineEdit()
-        self.send_button = QtWidgets.QPushButton("Send")
-        self.send_button.clicked.connect(self._send_clicked)
-        input_layout.addWidget(self.message_input)
-        input_layout.addWidget(self.send_button)
+        self.message_input.returnPressed.connect(self._send_clicked)
 
+        self.send_button = QtWidgets.QPushButton("Send")
+        self.send_button.setStyleSheet("""
+            QPushButton { background-color: hsl(213,100%,50%); color:white; border-radius:5px; padding:6px 12px; font-weight:bold; }
+            QPushButton:hover { background-color: hsl(213,100%,60%); }
+        """)
+        self.send_button.clicked.connect(self._send_clicked)
+
+        self.file_button = QtWidgets.QPushButton("🗎")
+        self.file_button.setFixedSize(36, 36)
+        self.file_button.setStyleSheet("""
+            QPushButton { background-color: hsl(0,0,50); color:white; border-radius:5px; font-size:14pt; }
+            QPushButton:hover { background-color: hsl(0,0,60); }
+        """)
+        self.file_button.clicked.connect(self._send_file_clicked)
+
+        input_layout.addWidget(self.message_input)
+        input_layout.addWidget(self.file_button)
+        input_layout.addWidget(self.send_button)
         main_layout.addLayout(input_layout)
 
     def open_chat(self, chat_id):
@@ -242,22 +318,74 @@ class ChatPanel(QtWidgets.QWidget):
                 widget.setParent(None)
 
     def add_message(self, sender, content, me=False):
-        label = QtWidgets.QLabel(f"<b>{sender}:</b> {content}")
-        label.setWordWrap(True)
-        label.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Raised)
+        bubble = QtWidgets.QLabel(f"<b>{sender}</b><br>{content}")
+        bubble.setWordWrap(True)
+        bubble.setMaximumWidth(min(500, int(self.width() * 0.65)))
+        bubble.setStyleSheet(
+            "padding:8px; border-radius:8px; margin:2px; background-color: #2e86de; color: white;"
+            if me else
+            "padding:8px; border-radius:8px; margin:2px; background-color: hsl(0,0,30); color: white;"
+        )
+
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(4, 2, 4, 2)
         if me:
-            label.setStyleSheet("padding:5px; margin:2px; background-color:#a8e6cf; border-radius:5px;")
+            row.addStretch()
+            row.addWidget(bubble)
         else:
-            label.setStyleSheet("padding:5px; margin:2px; background-color:#e0e0e0; border-radius:5px;")
-        self.messages_layout.insertWidget(self.messages_layout.count() - 1, label)
+            row.addWidget(bubble)
+            row.addStretch()
+
+        container = QtWidgets.QWidget()
+        container.setLayout(row)
+        container.setStyleSheet("background: transparent;")
+        self.messages_layout.insertWidget(self.messages_layout.count() - 1, container)
+        self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
+
+    def add_file_message(self, sender, file_name, message_id, sent_at, me=False):
+        widget = FileMessageWidget(sender, file_name, message_id, sent_at, me=me)
+        widget.setMaximumWidth(min(500, int(self.width() * 0.65)))
+
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(4, 2, 4, 2)
+        if me:
+            row.addStretch()
+            row.addWidget(widget)
+        else:
+            row.addWidget(widget)
+            row.addStretch()
+
+        container = QtWidgets.QWidget()
+        container.setLayout(row)
+        container.setStyleSheet("background: transparent;")
+        self.messages_layout.insertWidget(self.messages_layout.count() - 1, container)
         self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
 
     def _send_clicked(self):
         text = self.message_input.text().strip()
         if text and self.send_callback and self.current_chat_id is not None:
             self.send_callback(self.current_chat_id, text)
-            self.add_message("Me", text, me=True)
             self.message_input.clear()
+
+    def _send_file_clicked(self):
+        if self.current_chat_id is None:
+            QtWidgets.QMessageBox.warning(self, "Error", "Open a chat first")
+            return
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select File")
+        if not file_path:
+            return
+        file_name = os.path.basename(file_path)
+        try:
+            with open(file_path, "rb") as f:
+                file_data = base64.b64encode(f.read()).decode()
+            send_json(s, {
+                "type": "send_file",
+                "chat_id": self.current_chat_id,
+                "file_name": file_name,
+                "file_data": file_data
+            })
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to send file: {e}")
 
 class NewChatWindow(QtWidgets.QWidget):
     chat_created = QtCore.Signal(dict)
@@ -281,11 +409,6 @@ class NewChatWindow(QtWidgets.QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        self.avatar_btn = QtWidgets.QPushButton("Select Chat Picture")
-        self.avatar_btn.clicked.connect(self.select_avatar)
-        self.avatar_pixmap = None
-        layout.addWidget(self.avatar_btn)
-
         self.name_input = QtWidgets.QLineEdit()
         self.name_input.setPlaceholderText("Chat Name")
         layout.addWidget(self.name_input)
@@ -304,13 +427,6 @@ class NewChatWindow(QtWidgets.QWidget):
         self.create_btn = QtWidgets.QPushButton("Create Chat")
         self.create_btn.clicked.connect(self.create_chat)
         layout.addWidget(self.create_btn)
-
-    def select_avatar(self):
-        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Chat Picture", "", "Images (*.png *.jpg *.jpeg)")
-        if file_path:
-            pixmap = QtGui.QPixmap(file_path)
-            self.avatar_pixmap = pixmap.scaled(50, 50, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-            self.avatar_btn.setText("Picture Selected")
 
     def update_user_list(self):
         search_text = self.search_input.text().lower()
@@ -331,9 +447,11 @@ class NewChatWindow(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", "Please enter a chat name")
             return
 
-        selected_users = [self.user_list_widget.item(i).text() 
-                          for i in range(self.user_list_widget.count()) 
-                          if self.user_list_widget.item(i).checkState() == QtCore.Qt.Checked]
+        selected_users = [
+            self.user_list_widget.item(i).text()
+            for i in range(self.user_list_widget.count())
+            if self.user_list_widget.item(i).checkState() == QtCore.Qt.Checked
+        ]
 
         if not selected_users:
             QtWidgets.QMessageBox.warning(self, "Error", "Please select at least one user")
@@ -341,20 +459,17 @@ class NewChatWindow(QtWidgets.QWidget):
 
         selected_users.append(self.owner_username)
 
-        chat_data = {
-            "name": chat_name,
+        message = {
+            "type": "create_chat",
+            "creator": self.owner_username,
             "users": selected_users,
-            "avatar": None
+            "name": chat_name
         }
 
-        if self.avatar_pixmap:
-            ba = QtCore.QByteArray()
-            buffer = QtCore.QBuffer(ba)
-            buffer.open(QtCore.QIODevice.WriteOnly)
-            self.avatar_pixmap.save(buffer, "PNG")
-            chat_data["avatar"] = ba.data()
-
-        self.chat_created.emit(chat_data)
+        if not s:
+            QtWidgets.QMessageBox.warning(self, "Error", "No server connection!")
+            return
+        send_json(s, message)
         self.close()
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -398,6 +513,10 @@ class MainWindow(QtWidgets.QMainWindow):
             "sender": self.username,
             "content": content
         })
+
+    def open_chat(self, chat_id):
+        self.chat_panel.open_chat(chat_id)
+        send_json(s, {"type": "open_chat", "chat_id": chat_id})
 
 class LoginWindow(QtWidgets.QWidget):
     login_success = QtCore.Signal(str)
@@ -608,71 +727,77 @@ def clear_console():
         os.system('clear')
 
 def listener():
-    try:
-        msg = recv_json(s)
-        if msg is None:
-            print("Disconnected from the server")
-        msg_type = msg.get("type")
-        if msg_type == "success" or msg_type == "error":
-            print(f"{msg.get('content')}")
-        elif msg_type == "loginsuccess":
-            login_window.login_success.emit(msg.get("content"))
-        elif msg_type == "loginerror":
-            login_window.login_error.emit(msg.get("content"))
-        elif msg_type == "users_got":
-            global all_users
-            all_users = msg.get("users", [])
+    while True:
+        try:
+            msg = recv_json(s)
 
-            if main_window:
-                win = main_window.left_panel.new_chat_window
-                if win:
-                    win.all_users = all_users
-                    win.update_user_list()
-        elif msg_type == "chats_got":
-            chats = msg.get("chats")
-            if main_window:
-                main_window.left_panel.update_chats(chats)
-        elif msg_type == "chat_open":
-            clear_console()
-            print(f"Entered chat with id {msg.get('chat_id')}")
-            current_chat_id = msg.get('chat_id')
-            for m in msg.get("messages"):
-                print(f"{m['sender']} : {m['content']}   {m['sent_at']}")
-        elif msg_type == "new_msg":
-            chat_id = msg.get("chat_id")
-            if chat_id == current_chat_id:
-                main_window.chat_panel.add_message(msg.get("sender"), msg.get("content"))
-            else:
-                print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
-        elif msg_type == "new_file":
-            chat_id = msg.get("chat_id")
-            if chat_id == current_chat_id:
-                print(f"{msg.get('sender')} : File: {msg.get('file_name')} [{msg.get('message_id')}]   {msg.get('sent_at')}")
-            else:
-                print(f"New file from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
-        elif msg_type == "file_download":
-            file_name = msg.get('file_name')
-            file_size = msg.get('file_size')
-            file_path = os.path.join("files", file_name)
-            try:
-                with open(file_path, "wb") as f:
-                    bytes_read = 0
-                    while bytes_read < file_size:
-                        chunk = s.recv(min(4096, file_size - bytes_read))
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        bytes_read += len(chunk)
-                print("File downloaded succesfully")
-            except Exception as e:
-                print(f"Error occured while downloading file: {e}")
-        elif msg_type == "closed_chat":
-            clear_console()
-            print("Successfully closed chat")
-        elif msg_type == "disconnect":
-            print(f"Disconnected from the server - {msg.get('content')}")
-    except Exception as e:
-        print("Error receiving message:", e)
+            if msg is None:
+                print("Disconnected from the server")
+                break
+            msg_type = msg.get("type")
+
+            if msg_type == "success" or msg_type == "error":
+                print(f"{msg.get('content')}")
+
+            elif msg_type == "loginsuccess":
+                login_window.login_success.emit(msg.get("content"))
+
+            elif msg_type == "loginerror":
+                login_window.login_error.emit(msg.get("content"))
+
+            elif msg_type == "users_got":
+                global all_users
+                all_users = msg.get("users", [])
+                if main_window and hasattr(main_window.left_panel, "new_chat_window"):
+                    win = main_window.left_panel.new_chat_window
+                    if win.isVisible():
+                        win.all_users = all_users
+                        win.update_user_list()
+
+            elif msg_type == "chats_got":
+                app_signals.chats_received.emit(msg.get("chats", []))
+
+            elif msg_type == "chat_open":
+                global current_chat_id
+                current_chat_id = msg.get("chat_id")
+                app_signals.chat_opened.emit(current_chat_id, msg.get("messages", []))
+
+            elif msg_type == "chat_created":
+                app_signals.chat_created.emit(
+                    msg.get("chat_name", ""),
+                    msg.get("last_message", ""),
+                    msg.get("chat_id")
+                )
+
+            elif msg_type == "new_msg":
+                chat_id = msg.get("chat_id")
+                if chat_id == current_chat_id:
+                    me = msg.get("sender") == username
+                    app_signals.new_message.emit(msg.get("sender"), msg.get("content"), me)
+
+            elif msg_type == "new_file":
+                chat_id = msg.get("chat_id")
+                if chat_id == current_chat_id:
+                    me = msg.get("sender") == username
+                    app_signals.file_received.emit(
+                        msg.get("sender"), msg.get("file_name"),
+                        msg.get("message_id"), msg.get("sent_at", ""), me
+                    )
+
+            elif msg_type == "file_download":
+                file_name = msg.get("file_name")
+                file_data = msg.get("file_data")
+                app_signals.file_download_ready.emit(file_name, file_data)
+
+            elif msg_type == "closed_chat":
+                clear_console()
+                print("Successfully closed chat")
+
+            elif msg_type == "disconnect":
+                print(f"Disconnected from the server - {msg.get('content')}")
+
+        except Exception as e:
+            print("Error receiving message:", e)
 
 def start_login(connected_socket):
     global s, login_window, main_window
@@ -690,6 +815,37 @@ def start_login(connected_socket):
         main_window.left_panel.username_label.setText(username)
         main_window.show()
         login_window.close()
+        app_signals.chats_received.connect(main_window.left_panel.update_chats)
+        app_signals.chat_created.connect(lambda name, last, cid: main_window.left_panel.add_chat(name, last, cid))
+
+        def _on_chat_opened(chat_id, msgs):
+            main_window.chat_panel.open_chat(chat_id)
+            for m in msgs:
+                me = m["sender"] == username
+                if m.get("file_name"):
+                    main_window.chat_panel.add_file_message(m["sender"], m["file_name"], m["message_id"], m.get("sent_at", ""), me)
+                else:
+                    main_window.chat_panel.add_message(m["sender"], m["content"] or "", me)
+
+        app_signals.chat_opened.connect(_on_chat_opened)
+
+        app_signals.new_message.connect(lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me))
+        app_signals.file_received.connect(
+            lambda sender, fname, mid, sat, me: main_window.chat_panel.add_file_message(sender, fname, mid, sat, me)
+        )
+        def _handle_download(file_name, file_data):
+            save_path, _ = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", file_name)
+            if not save_path:
+                return
+            try:
+                with open(save_path, "wb") as f:
+                    f.write(base64.b64decode(file_data))
+            except Exception as e:
+                QtWidgets.QMessageBox.warning(None, "Error", f"Failed to save file: {e}")
+
+        app_signals.file_download_ready.connect(_handle_download)
+
+        send_json(s, {"type": "get_chats", "user": username})
 
     login_window.login_success.connect(handle_login_success)
     login_window.login_error.connect(lambda err: QtWidgets.QMessageBox.warning(login_window, "Login Failed", err))
@@ -703,6 +859,7 @@ if __name__ == "__main__":
     running = True
     app = QtWidgets.QApplication(sys.argv)
 
+    app_signals = AppSignals()
     connect_window = ConnectWindow()
     connect_window.connected.connect(start_login)
     connect_window.show()
