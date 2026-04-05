@@ -255,35 +255,49 @@ if __name__ == "__main__":
         try:
             while True:
                 message = recv_json(conn)
+                json_type = message.get("type", None)
                 if message is None:
                     break
                 if username is None:
                     username = message.get("username")
                     password = message.get("password")
                     if not username or not password:
-                            send_json(conn, {"type": "error", "content": "Username and password required"})
+                            send_json(conn, {"type": "loginerror", "content": "Username and password required"})
                     with sqlite3.connect("chatapp.db") as dbconn:
                         dbconn.execute("PRAGMA foreign_keys = ON")
                         cur = dbconn.cursor()
                         cur.execute("select id, password from users where username = ?",(username,))
-                        exists_row = cur.fetchone()
-                        if exists_row:
-                            stored_password = exists_row[1]
-                            if stored_password == password:
-                                with clients_lock:
-                                    clients[username] = conn
-                                    print(f"Client {username} connected")
-                                send_json(conn, {"type": "success", "content": "Successfully logged in"})
+                        user_row = cur.fetchone()
+                        if json_type == "register":
+                            if user_row:
+                                send_json(conn, {"type": "loginerror", "content": "Username already exists"})
+                                username = None
                             else:
-                                send_json(conn, {"type" : "disconnect", "content" : "Wrong password"})
-                                break
-                        else:
-                                cur.execute("insert into users(username, password) values(?, ?)",(username,password))
+                                cur.execute("insert into users(username, password) values (?, ?)", (username, password))
                                 dbconn.commit()
                                 with clients_lock:
                                     clients[username] = conn
-                                print(f"Client {username} connected")
-                                send_json(conn, {"type" : "success", "content" : "Created user"})
+                                print(f"Client {username} registered and connected")
+                                send_json(conn, {"type": "loginsuccess", "content": "User registered"})
+                        
+                        elif json_type == "login":
+                            if not user_row:
+                                send_json(conn, {"type": "loginerror", "content": "User does not exist"})
+                                username = None
+                            else:
+                                stored_password = user_row[1]
+                                if stored_password == password:
+                                    with clients_lock:
+                                        clients[username] = conn
+                                    print(f"Client {username} logged in")
+                                    send_json(conn, {"type": "loginsuccess", "content": "Logged in successfully"})
+                                else:
+                                    send_json(conn, {"type": "loginerror", "content": "Wrong password"})
+                                    username = None
+                        else:
+                            send_json(conn, {"type": "error", "content": "Invalid action, must be login or register"})
+                            username = None
+                    continue
                 else:
                     json_type = message.get("type")
                     if json_type == "create_chat":

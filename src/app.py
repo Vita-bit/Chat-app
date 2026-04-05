@@ -5,61 +5,319 @@ import os
 import sys
 from PySide6 import QtCore, QtWidgets, QtGui
 
-if __name__ == "__main__":
+class ChatItem(QtWidgets.QFrame):
+    def __init__(self, chat_name, last_message, chat_id, avatar_bytes = None):
+        super().__init__()
+        self.chat_id = chat_id
+        self.setFixedHeight(70)
+        self.setCursor(QtCore.Qt.PointingHandCursor)
 
-    #HOST = input("Enter server's public / private IP address: ")
-    #PORT = input("Enter the port the server's running on: ")
-    current_chat_id = None
-    running = True
-    app = QtWidgets.QApplication(sys.argv)
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(10, 5, 10, 5)
+        layout.setSpacing(10)
 
-    class MainWindow(QtWidgets.QMainWindow):
-        def __init__(self):
-            super().__init__()
-            self.screen_res = QtGui.QScreen.availableSize(QtGui.QGuiApplication.primaryScreen())
-            self.setMinimumSize(700, 800)
-            self.setWindowTitle("Chat App")
-            self.setMouseTracking(True)
-            self.resize_margin = 15
-            self.central_widget = QtWidgets.QWidget()
-            self.setCentralWidget(self.central_widget)
-            self.layout = QtWidgets.QHBoxLayout()
-            self.central_widget.setLayout(self.layout)
-            self.layout.setContentsMargins(0, 0, 0, 0)
-            self.layout.setSpacing(0)
-            self.setStyleSheet("""
+        self.avatar_label = QtWidgets.QLabel()
+        self.avatar_label.setFixedSize(50, 50)
+        if avatar_bytes:
+            pixmap = QtGui.QPixmap()
+            pixmap.loadFromData(avatar_bytes)
+            pixmap = pixmap.scaled(50, 50, QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation)
+        else:
+            pixmap = QtGui.QPixmap(50, 50)
+            pixmap.fill(QtGui.QColor("gray"))
+        self.avatar_label.setPixmap(pixmap)
+        self.avatar_label.setScaledContents(True)
+        layout.addWidget(self.avatar_label)
+
+        text_layout = QtWidgets.QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 10, 0)
+        text_layout.setSpacing(0)
+
+        self.name_label = QtWidgets.QLabel(chat_name)
+        name_font = QtGui.QFont()
+        name_font.setPointSize(12)
+        name_font.setBold(True)
+        self.name_label.setFont(name_font)
+
+        self.message_label = QtWidgets.QLabel(last_message)
+        message_font = QtGui.QFont()
+        message_font.setPointSize(9)
+        self.message_label.setFont(message_font)
+        self.message_label.setStyleSheet("color: hsl(0,0,100);")
+        self.message_label.setWordWrap(True)
+
+        text_layout.addWidget(self.name_label)
+        text_layout.addWidget(self.message_label)
+        layout.addLayout(text_layout)
+        layout.addStretch()
+
+        self.setStyleSheet("""
+            QFrame {
+                background-color: hsl(0,0,60);
+            }
+            QFrame:hover {
+                background-color: hsl(0,0,50);
+            }
+            QLabel {
+                background-color: transparent;               
+            }
+        """)
+
+class LeftPanel(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setStyleSheet("background-color: hsl(0,0,60);")
+        self.setFixedWidth(300)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+
+        self.new_chat_btn = QtWidgets.QPushButton("＋ Add Chat")
+        self.new_chat_btn.setFixedSize(130, 40)
+        self.new_chat_btn.setStyleSheet("""
+            QPushButton {
+                background-color: hsl(213, 100%, 50%);
+                font-weight: bold;
+                font-size: 12pt;
+                text-align: center;
+            }
+            QPushButton:hover {
+                background-color: hsl(213, 100%, 60%);
+            }
+        """)
+        top_row = QtWidgets.QHBoxLayout()
+        top_row.addStretch()
+        top_row.addWidget(self.new_chat_btn)
+        main_layout.addLayout(top_row)
+
+        self.scroll_area = QtWidgets.QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setStyleSheet("border: none;")
+
+        self.chats_container = QtWidgets.QWidget()
+
+        self.scroll_layout = QtWidgets.QVBoxLayout(self.chats_container)
+        self.scroll_layout.setContentsMargins(0,0,0,0)
+        self.scroll_layout.setSpacing(5)
+        self.scroll_layout.addStretch()
+        self.scroll_area.setWidget(self.chats_container)
+        main_layout.addWidget(self.scroll_area)
+
+    def add_chat(self, chat_name, last_message, chat_id):
+        chat_item = ChatItem(chat_name, last_message, chat_id)
+        self.scroll_layout.insertWidget(self.scroll_layout.count()-1, chat_item)
+
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.screen_res = QtGui.QScreen.availableSize(QtGui.QGuiApplication.primaryScreen())
+        self.setMinimumSize(700, 800)
+        self.setWindowTitle("Chat App")
+        self.setMouseTracking(True)
+        self.resize_margin = 15
+        self.central_widget = QtWidgets.QWidget()
+        self.central_widget.setStyleSheet("""
                 background-color: hsl(0, 0, 40);
             """)
+        self.setCentralWidget(self.central_widget)
+        self.layout = QtWidgets.QHBoxLayout(self.central_widget)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
 
-        def __center_on_screen__(self):
-            self.move((self.screen_res.width() / 2) - (self.frameSize().width() / 2), (self.screen_res.height() / 2) - (self.frameSize().height() / 2))
+        self.left_panel = LeftPanel()
+        self.layout.addWidget(self.left_panel)
 
-        def __show__(self):
-            self.setWindowState(QtCore.Qt.WindowNoState)
-            self.setGeometry(0, 0, 700, 800)
-            self.__center_on_screen__()
-            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint)
-            self.show()
-            self.setWindowFlag(QtCore.Qt.WindowStaysOnTopHint, False)
-            self.show()
+        self.right_panel = QtWidgets.QWidget()
+        self.right_panel.setStyleSheet("background-color: hsl(0,0,20);")
+        self.right_panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.layout.addWidget(self.right_panel)
 
-    main_window = MainWindow()
+        for i in range(100):
+            self.left_panel.add_chat(f"Chat {i+1}", "Hi", i)
 
-    left_panel = QtWidgets.QFrame()
-    left_panel.setStyleSheet("background-color: hsl(0, 0, 60);")
-    left_panel.setFixedWidth(300)
+    def __center_on_screen__(self):
+        self.move(int((self.screen_res.width() / 2) - (self.frameSize().width() / 2)), int((self.screen_res.height() / 2) - (self.frameSize().height() / 2)))
 
-    right_panel = QtWidgets.QFrame()
-    right_panel.setStyleSheet("background-color: hsl(0, 0, 20);")
-    right_panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+class LoginWindow(QtWidgets.QWidget):
+    login_success = QtCore.Signal(str)
+    login_error = QtCore.Signal(str) 
 
-    # --- Add widgets to the horizontal layout ---
-    main_window.layout.addWidget(left_panel)
-    main_window.layout.addWidget(right_panel)
+    def __init__(self, s):
+        super().__init__()
+        self.s = s
+        self.setFixedSize(400, 300)
+        self.setWindowTitle("Login")
+        self.setStyleSheet("""
+            QWidget {
+                background-color: hsl(0,0,60);
+                color: white;
+                font-size: 12pt;
+            }
+            QLineEdit {
+                background-color: hsl(0,0,50);
+                border-radius: 5px;
+                padding: 5px;
+                color: white;
+            }
+            QPushButton {
+                background-color: hsl(213, 100%, 50%);
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: hsl(213, 100%, 60%);
+            }
+            QLabel {
+                color: white;
+                font-size: 24pt;
+            }
+        """)
 
-    main_window.__show__()
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.setContentsMargins(30, 30, 30, 30)
+        self.layout.setSpacing(15)
 
-    """def send_json(socket, message):
+        self.title = QtWidgets.QLabel("Chat App")
+        self.title.setAlignment(QtCore.Qt.AlignCenter)
+        title_font = QtGui.QFont()
+        title_font.setBold(True)
+        self.title.setFont(title_font)
+        self.layout.addWidget(self.title)
+
+        self.username_input = QtWidgets.QLineEdit()
+        self.username_input.setPlaceholderText("Username")
+        self.layout.addWidget(self.username_input)
+
+        self.password_input = QtWidgets.QLineEdit()
+        self.password_input.setPlaceholderText("Password")
+        self.password_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.layout.addWidget(self.password_input)
+
+        self.login_btn = QtWidgets.QPushButton("Login")
+        self.layout.addWidget(self.login_btn)
+
+        self.register_btn = QtWidgets.QPushButton("Register")
+        self.register_btn.setStyleSheet("""
+            QPushButton {
+                background-color: hsl(0,0,50%);
+                color: white;
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: hsl(0,0,60%);
+            }
+        """)
+        self.layout.addWidget(self.register_btn)
+
+        self.login_btn.clicked.connect(self.attempt_login)
+        self.register_btn.clicked.connect(self.attempt_register)
+
+    def attempt_login(self):
+        username = self.username_input.text().strip()
+        password = self.password_input.text().strip()
+        if not username or not password:
+            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in all inputs")
+            return
+
+        send_json(self.s, {"type": "login", "username": username, "password": password})
+
+    def attempt_register(self):
+        username = self.username_input.text().strip()
+        password = self.password_input.text().strip()
+        if not username or not password:
+            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in all inputs")
+            return
+        
+        send_json(self.s, {"type": "register", "username": username, "password": password})
+
+class ConnectWindow(QtWidgets.QWidget):
+    connected = QtCore.Signal(socket.socket)
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(400, 300)
+        self.setWindowTitle("Connect to Server")
+        self.setStyleSheet("""
+            QWidget {
+                background-color: hsl(0,0,60);
+                color: white;
+                font-size: 12pt;
+            }
+            QLineEdit {
+                background-color: hsl(0,0,50);
+                border-radius: 5px;
+                padding: 5px;
+                color: white;
+            }
+            QPushButton {
+                background-color: hsl(213, 100%, 50%);
+                border-radius: 5px;
+                padding: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: hsl(213, 100%, 60%);
+            }
+            QLabel {
+                color: white;
+                font-size: 24pt;
+            }
+        """)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(15)
+
+        self.title = QtWidgets.QLabel("Connect to Server")
+        self.title.setAlignment(QtCore.Qt.AlignCenter)
+        title_font = QtGui.QFont()
+        title_font.setBold(True)
+        title_font.setPointSize(20)
+        self.title.setFont(title_font)
+        layout.addWidget(self.title)
+
+        self.ip_input = QtWidgets.QLineEdit()
+        self.ip_input.setPlaceholderText("Server IP")
+        layout.addWidget(self.ip_input)
+
+        self.port_input = QtWidgets.QLineEdit()
+        self.port_input.setPlaceholderText("Port")
+        layout.addWidget(self.port_input)
+
+        self.connect_btn = QtWidgets.QPushButton("Connect")
+        layout.addWidget(self.connect_btn)
+
+        self.connect_btn.clicked.connect(self.__attempt_connect__)
+
+    def __attempt_connect__(self):
+        ip = self.ip_input.text().strip()
+        port_text = self.port_input.text().strip()
+        if not ip or not port_text:
+            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in all inputs")
+            return
+        try:
+            port = int(port_text)
+        except ValueError:
+            QtWidgets.QMessageBox.warning(self, "Error", "Port must be a number")
+            return
+        
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((ip, port))
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Error", f"Error connecting: {e}")
+            s.close()
+            return
+        
+        self.connected.emit(s)
+        self.close()
+
+def send_json(socket, message):
         try:
             data = json.dumps(message).encode()
             socket.sendall(len(data).to_bytes(4, "big"))
@@ -69,97 +327,113 @@ if __name__ == "__main__":
             return False
         return True
 
-    def recv_json(socket):
-        try:
-            length_bytes = socket.recv(4)
-            length = int.from_bytes(length_bytes, "big")
-            data = b""
-            while len(data) < length:
-                chunk = socket.recv(length - len(data))
-                if not chunk:
-                    break
-                data += chunk
-            return json.loads(data.decode())
-        except Exception as e:
-            print(f"Error recieving message from server - {e}")
+def recv_json(socket):
+    try:
+        length_bytes = socket.recv(4)
+        length = int.from_bytes(length_bytes, "big")
+        data = b""
+        while len(data) < length:
+            chunk = socket.recv(length - len(data))
+            if not chunk:
+                break
+            data += chunk
+        return json.loads(data.decode())
+    except Exception as e:
+        print(f"Error recieving message from server - {e}")
 
-    def clear_console():
-        if os.name == 'nt':
-            os.system('cls')
-        else:
-            os.system('clear')
+def clear_console():
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
 
-    def listener():
-        while running:
+def listener():
+    try:
+        msg = recv_json(s)
+        if msg is None:
+            print("Disconnected from the server")
+        msg_type = msg.get("type")
+        if msg_type == "success" or msg_type == "error":
+            print(f"{msg.get('content')}")
+        elif msg_type == "loginsuccess":
+            login_window.login_success.emit(msg.get("content"))
+        elif msg_type == "loginerror":
+            login_window.login_success.emit(msg.get("content"))
+        elif msg_type == "chats_got":
+            chats = msg.get("chats")
+            clear_console()
+            print("Your chats:\n")
+            for c in chats:
+                print(f"{c['name']} [{c['id']}]")
+        elif msg_type == "chat_open":
+            clear_console()
+            print(f"Entered chat with id {msg.get('chat_id')}")
+            current_chat_id = msg.get('chat_id')
+            for m in msg.get("messages"):
+                print(f"{m['sender']} : {m['content']}   {m['sent_at']}")
+        elif msg_type == "new_msg":
+            chat_id = msg.get("chat_id")
+            if chat_id == current_chat_id:
+                print(f"{msg.get('sender')} : {msg.get('content')}   {msg.get('sent_at')}")
+            else:
+                print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
+        elif msg_type == "new_file":
+            chat_id = msg.get("chat_id")
+            if chat_id == current_chat_id:
+                print(f"{msg.get('sender')} : File: {msg.get('file_name')} [{msg.get('message_id')}]   {msg.get('sent_at')}")
+            else:
+                print(f"New file from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
+        elif msg_type == "file_download":
+            file_name = msg.get('file_name')
+            file_size = msg.get('file_size')
+            file_path = os.path.join("files", file_name)
             try:
-                msg = recv_json(s)
-                if msg is None:
-                    print("Disconnected from the server")
-                    running = False
-                    break
-                msg_type = msg.get("type")
-                if msg_type == "success" or msg_type == "error":
-                    print(f"{msg.get('content')}")
-                elif msg_type == "chats_got":
-                    chats = msg.get("chats")
-                    clear_console()
-                    print("Your chats:\n")
-                    for c in chats:
-                        print(f"{c['name']} [{c['id']}]")
-                elif msg_type == "chat_open":
-                    clear_console()
-                    print(f"Entered chat with id {msg.get('chat_id')}")
-                    current_chat_id = msg.get('chat_id')
-                    for m in msg.get("messages"):
-                        print(f"{m['sender']} : {m['content']}   {m['sent_at']}")
-                elif msg_type == "new_msg":
-                    chat_id = msg.get("chat_id")
-                    if chat_id == current_chat_id:
-                        print(f"{msg.get('sender')} : {msg.get('content')}   {msg.get('sent_at')}")
-                    else:
-                        print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
-                elif msg_type == "new_file":
-                    chat_id = msg.get("chat_id")
-                    if chat_id == current_chat_id:
-                        print(f"{msg.get('sender')} : File: {msg.get('file_name')} [{msg.get('message_id')}]   {msg.get('sent_at')}")
-                    else:
-                        print(f"New file from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
-                elif msg_type == "file_download":
-                    file_name = msg.get('file_name')
-                    file_size = msg.get('file_size')
-                    file_path = os.path.join("files", file_name)
-                    try:
-                        with open(file_path, "wb") as f:
-                            bytes_read = 0
-                            while bytes_read < file_size:
-                                chunk = s.recv(min(4096, file_size - bytes_read))
-                                if not chunk:
-                                    break
-                                f.write(chunk)
-                                bytes_read += len(chunk)
-                        print("File downloaded succesfully")
-                    except Exception as e:
-                        print(f"Error occured while downloading file: {e}")
-                elif msg_type == "closed_chat":
-                    clear_console()
-                    print("Successfully closed chat")
-                elif msg_type == "disconnect":
-                    print(f"Disconnected from the server - {msg.get('content')}")
-                    running = False
+                with open(file_path, "wb") as f:
+                    bytes_read = 0
+                    while bytes_read < file_size:
+                        chunk = s.recv(min(4096, file_size - bytes_read))
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        bytes_read += len(chunk)
+                print("File downloaded succesfully")
             except Exception as e:
-                print("Error receiving message:", e)
-                running = False
+                print(f"Error occured while downloading file: {e}")
+        elif msg_type == "closed_chat":
+            clear_console()
+            print("Successfully closed chat")
+        elif msg_type == "disconnect":
+            print(f"Disconnected from the server - {msg.get('content')}")
+    except Exception as e:
+        print("Error receiving message:", e)
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((HOST, int(PORT)))
-    threading.Thread(target=listener, daemon=True).start()
+def start_login(connected_socket):
+        global s, login_window, main_window
+        s = connected_socket
+        threading.Thread(target=listener, daemon=True).start()
 
-    username = input("Enter your username: ")
-    password = input("Enter your password: ")
-    send_json(s, {"type": "login", "username": username, "password": password})
-    print("\nType 'help' for commands")"""
+        login_window = LoginWindow(s)
+        main_window = MainWindow()
+        login_window.show()
+        login_window.login_success.connect(lambda username: main_window.show())
+        login_window.login_success.connect(login_window.close)
+        login_window.login_error.connect(lambda err: QtWidgets.QMessageBox.warning(login_window, "Login Failed", err))
 
-    while running:
+if __name__ == "__main__":
+
+    login_window = None
+    main_window = None
+    current_chat_id = None
+    running = True
+    app = QtWidgets.QApplication(sys.argv)
+
+    connect_window = ConnectWindow()
+    connect_window.connected.connect(start_login)
+    connect_window.show()
+
+    print("\nType 'help' for commands")
+
+    """while running:
         if not running:
             break
         comm = input("").strip()
@@ -235,4 +509,6 @@ if __name__ == "__main__":
                     except Exception as e:
                         print(f"Error while trying to download file: {e}")
             else:
-                print("Invalid command")
+                print("Invalid command")"""
+
+    sys.exit(app.exec())
