@@ -110,6 +110,64 @@ class LeftPanel(QtWidgets.QWidget):
         chat_item = ChatItem(chat_name, last_message, chat_id)
         self.scroll_layout.insertWidget(self.scroll_layout.count()-1, chat_item)
 
+    def update_chats(self, chats):
+        for c in chats:
+            name = c.get("name")
+            last_message = c.get("last_message", "")
+            chat_id = c.get("id")
+            self.add_chat(name, last_message, chat_id)
+
+class ChatPanel(QtWidgets.QWidget):
+    def __init__(self, send_callback=None):
+        super().__init__()
+        self.send_callback = send_callback
+        self.current_chat_id = None
+
+        main_layout = QtCore.QVBoxLayout(self)
+
+        self.scroll_area = QtWidgets.QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.messages_container = QtWidgets.QWidget()
+        self.messages_layout = QtCore.QVBoxLayout(self.messages_container)
+        self.messages_layout.addStretch()
+        self.messages_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.scroll_area.setWidget(self.messages_container)
+        main_layout.addWidget(self.scroll_area)
+
+        input_layout = QtCore.QHBoxLayout()
+        self.message_input = QtWidgets.QLineEdit()
+        self.send_button = QtWidgets.QPushButton("Send")
+        self.send_button.clicked.connect(self._send_clicked)
+        input_layout.addWidget(self.message_input)
+        input_layout.addWidget(self.send_button)
+
+        main_layout.addLayout(input_layout)
+
+    def open_chat(self, chat_id):
+        self.current_chat_id = chat_id
+        for i in reversed(range(self.messages_layout.count() - 1)):
+            widget = self.messages_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+    def add_message(self, sender, content, me=False):
+        label = QtWidgets.QLabel(f"<b>{sender}:</b> {content}")
+        label.setWordWrap(True)
+        label.setFrameStyle(QtWidgets.QFrame.Panel | QtWidgets.QFrame.Raised)
+        if me:
+            label.setStyleSheet("padding:5px; margin:2px; background-color:#a8e6cf; border-radius:5px;")
+        else:
+            label.setStyleSheet("padding:5px; margin:2px; background-color:#e0e0e0; border-radius:5px;")
+        self.messages_layout.insertWidget(self.messages_layout.count() - 1, label)
+        self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
+
+    def _send_clicked(self):
+        text = self.message_input.text().strip()
+        if text and self.send_callback and self.current_chat_id is not None:
+            self.send_callback(self.current_chat_id, text)
+            self.add_message("Me", text, me=True)
+            self.message_input.clear()
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
@@ -130,13 +188,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.left_panel = LeftPanel()
         self.layout.addWidget(self.left_panel)
 
-        self.right_panel = QtWidgets.QWidget()
-        self.right_panel.setStyleSheet("background-color: hsl(0,0,20);")
-        self.right_panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.layout.addWidget(self.right_panel)
+        self.chat_panel = ChatPanel(send_callback=self.send_message_to_server)
+        self.layout.addWidget(self.chat_panel)
 
         for i in range(100):
             self.left_panel.add_chat(f"Chat {i+1}", "Hi", i)
+
+        for i in range(self.left_panel.scroll_layout.count()-1):
+            item = self.left_panel.scroll_layout.itemAt(i).widget()
+            if isinstance(item, ChatItem):
+                item.mousePressEvent = lambda e, chat_id=item.chat_id: self.open_chat(chat_id)
 
     def __center_on_screen__(self):
         self.move(int((self.screen_res.width() / 2) - (self.frameSize().width() / 2)), int((self.screen_res.height() / 2) - (self.frameSize().height() / 2)))
@@ -361,10 +422,8 @@ def listener():
             login_window.login_success.emit(msg.get("content"))
         elif msg_type == "chats_got":
             chats = msg.get("chats")
-            clear_console()
-            print("Your chats:\n")
-            for c in chats:
-                print(f"{c['name']} [{c['id']}]")
+            if main_window:
+                main_window.left_panel.update_chats(chats)
         elif msg_type == "chat_open":
             clear_console()
             print(f"Entered chat with id {msg.get('chat_id')}")
@@ -374,7 +433,7 @@ def listener():
         elif msg_type == "new_msg":
             chat_id = msg.get("chat_id")
             if chat_id == current_chat_id:
-                print(f"{msg.get('sender')} : {msg.get('content')}   {msg.get('sent_at')}")
+                main_window.chat_panel.add_message(msg.get("sender"), msg.get("content"))
             else:
                 print(f"New message from {msg.get('sender')} in chat {msg.get('chat_name')} [{chat_id}]")
         elif msg_type == "new_file":

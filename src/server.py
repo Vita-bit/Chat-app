@@ -71,22 +71,30 @@ if __name__ == "__main__":
                 cur.execute("insert into chat_users (chat_id, user_id) values (?,?)",(chat_id, creator_id))
             dbconn.commit()
             send_json(conn, {"type" : "success", "content" : "Successfully created chat"})
-    def get_chats(user):
+    def get_chats(username):
         with sqlite3.connect("chatapp.db") as dbconn:
-            dbconn.execute("pragma foreign_keys = ON")
+            dbconn.execute("PRAGMA foreign_keys = ON")
             cur = dbconn.cursor()
-            cur.execute("select id from users where username = ?", (user,))
-            user_id_row = cur.fetchone()
-            if user_id_row:
-                user_id = user_id_row[0]
-            else:
-                send_json(clients[user], {"type" : "error", "content" : "User not set"})
-            cur.execute("select c.id as chat_id, coalesce(c.name, (select u2.username from chat_users cu2 join users u2 on cu2.user_id = u2.id where cu2.chat_id = c.id and u2.id != ? limit 1)) as chat_name from chats c join chat_users cu on c.id = cu.chat_id where cu.user_id = ? group by c.id", (user_id, user_id))
+            
+            cur.execute("SELECT id FROM users WHERE username = ?", (username,))
+            user_row = cur.fetchone()
+            if not user_row:
+                send_json(clients[username], {"type": "error", "content": "User not set"})
+                return
+            user_id = user_row[0]
+            cur.execute("select c.id as chat_id, coalesce(c.name, (select u2.username from chat_users cu2 inner join users u2 on cu2.user_id = u2.id where cu2.chat_id = c.id AND u2.id != ? limit 1)) as chat_name, (select m.content from messages m where m.chat_id = c.id order by m.sent_at desc limit 1) as last_message from chats c inner join chat_users cu on c.id = cu.chat_id where cu.user_id = ? group by c.id order by last_message_time desc", (user_id, user_id))
             rows = cur.fetchall()
             ret = []
             for r in rows:
-                ret.append({"id" : r[0], "name" : r[1]})
-            send_json(clients[user], {"type" : "chats_got", "chats" : ret})
+                chat_id, chat_name, last_message = r
+                if last_message is None:
+                    last_message = ""
+                ret.append({
+                    "id": chat_id,
+                    "name": chat_name,
+                    "last_message": last_message
+                })
+            send_json(clients[username], {"type": "chats_got", "chats": ret})
     def open_chat(chat_id, username):
         with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
