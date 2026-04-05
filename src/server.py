@@ -423,6 +423,15 @@ if __name__ == "__main__":
                         file_id = message.get("file_id")
                         download_file(username, file_id, clients[username], chat_id)
 
+                    elif json_type == "logout":
+                        with clients_lock:
+                            if username in clients:
+                                del clients[username]
+                        with current_chats_lock:
+                            if username in current_chats:
+                                del current_chats[username]
+                        break
+
         except Exception as e:
             pass
         finally:

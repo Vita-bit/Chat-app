@@ -13,6 +13,7 @@ class AppSignals(QtCore.QObject):
     new_message = QtCore.Signal(str, str, bool)
     file_received = QtCore.Signal(str, str, int, str, bool)
     file_download_ready = QtCore.Signal(str, str)
+    logged_out = QtCore.Signal()
 
 class ChatItem(QtWidgets.QFrame):
     def __init__(self, chat_name, last_message, chat_id):
@@ -237,7 +238,7 @@ class LeftPanel(QtWidgets.QWidget):
             self.pw_window.show()
         elif action == logout_action:
             send_json(s, {"type": "logout", "username": username})
-            QtWidgets.QApplication.quit()
+            app_signals.logged_out.emit()
 
     def add_chat(self, chat_name, last_message, chat_id):
         if not last_message:
@@ -799,6 +800,79 @@ def listener():
         except Exception as e:
             print("Error receiving message:", e)
 
+def _handle_download(file_name, file_data):
+    save_path, _ = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", file_name)
+    if not save_path:
+        return
+    try:
+        with open(save_path, "wb") as f:
+            f.write(base64.b64decode(file_data))
+    except Exception as e:
+        QtWidgets.QMessageBox.warning(None, "Error", f"Failed to save file: {e}")
+
+def _on_chat_opened(chat_id, msgs):
+    main_window.chat_panel.open_chat(chat_id)
+    for m in msgs:
+        me = m["sender"] == username
+        if m.get("file_name"):
+            main_window.chat_panel.add_file_message(m["sender"], m["file_name"], m["message_id"], m.get("sent_at", ""), me)
+        else:
+            main_window.chat_panel.add_message(m["sender"], m["content"] or "", me)
+
+def handle_login_success(user):
+    global username, main_window
+    username = user
+    main_window = MainWindow()
+    main_window.username = username
+    main_window.left_panel.username_label.setText(username)
+    main_window.show()
+    login_window.close()
+    app_signals.chats_received.connect(main_window.left_panel.update_chats)
+    app_signals.chat_created.connect(lambda name, last, cid: main_window.left_panel.add_chat(name, last, cid))
+
+    app_signals.chat_opened.connect(_on_chat_opened)
+
+    app_signals.new_message.connect(lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me))
+    app_signals.file_received.connect(
+        lambda sender, fname, mid, sat, me: main_window.chat_panel.add_file_message(sender, fname, mid, sat, me)
+    )
+    app_signals.file_download_ready.connect(_handle_download)
+
+    send_json(s, {"type": "get_chats", "user": username})
+
+def do_logout():
+    global main_window, username, current_chat_id, s, connect_window
+
+    username = None
+    current_chat_id = None
+
+    try: app_signals.chats_received.disconnect()
+    except: pass
+    try: app_signals.chat_created.disconnect()
+    except: pass
+    try: app_signals.chat_opened.disconnect()
+    except: pass
+    try: app_signals.new_message.disconnect()
+    except: pass
+    try: app_signals.file_received.disconnect()
+    except: pass
+    try: app_signals.file_download_ready.disconnect()
+    except: pass
+
+    connect_window = ConnectWindow()
+    connect_window.connected.connect(start_login)
+    connect_window.show()
+
+    if main_window:
+        main_window.close()
+        main_window = None
+
+    try:
+        s.close()
+    except Exception:
+        pass
+    s = None
+
 def start_login(connected_socket):
     global s, login_window, main_window
     s = connected_socket
@@ -806,46 +880,6 @@ def start_login(connected_socket):
 
     login_window = LoginWindow(s)
     login_window.show()
-
-    def handle_login_success(user):
-        global username, main_window
-        username = user
-        main_window = MainWindow()
-        main_window.username = username
-        main_window.left_panel.username_label.setText(username)
-        main_window.show()
-        login_window.close()
-        app_signals.chats_received.connect(main_window.left_panel.update_chats)
-        app_signals.chat_created.connect(lambda name, last, cid: main_window.left_panel.add_chat(name, last, cid))
-
-        def _on_chat_opened(chat_id, msgs):
-            main_window.chat_panel.open_chat(chat_id)
-            for m in msgs:
-                me = m["sender"] == username
-                if m.get("file_name"):
-                    main_window.chat_panel.add_file_message(m["sender"], m["file_name"], m["message_id"], m.get("sent_at", ""), me)
-                else:
-                    main_window.chat_panel.add_message(m["sender"], m["content"] or "", me)
-
-        app_signals.chat_opened.connect(_on_chat_opened)
-
-        app_signals.new_message.connect(lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me))
-        app_signals.file_received.connect(
-            lambda sender, fname, mid, sat, me: main_window.chat_panel.add_file_message(sender, fname, mid, sat, me)
-        )
-        def _handle_download(file_name, file_data):
-            save_path, _ = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", file_name)
-            if not save_path:
-                return
-            try:
-                with open(save_path, "wb") as f:
-                    f.write(base64.b64decode(file_data))
-            except Exception as e:
-                QtWidgets.QMessageBox.warning(None, "Error", f"Failed to save file: {e}")
-
-        app_signals.file_download_ready.connect(_handle_download)
-
-        send_json(s, {"type": "get_chats", "user": username})
 
     login_window.login_success.connect(handle_login_success)
     login_window.login_error.connect(lambda err: QtWidgets.QMessageBox.warning(login_window, "Login Failed", err))
@@ -858,8 +892,10 @@ if __name__ == "__main__":
     username = None
     running = True
     app = QtWidgets.QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
 
     app_signals = AppSignals()
+    app_signals.logged_out.connect(do_logout) 
     connect_window = ConnectWindow()
     connect_window.connected.connect(start_login)
     connect_window.show()
