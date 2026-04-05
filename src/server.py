@@ -21,8 +21,7 @@ if __name__ == "__main__":
             socket.sendall(len(data).to_bytes(4, "big"))
             socket.sendall(data)
             return True
-        except Exception as e:
-            print(f"Error sending json to client - {e}")
+        except Exception:
             return False
     
     def recv_json(sock):
@@ -38,8 +37,7 @@ if __name__ == "__main__":
                     break
                 data += chunk
             return json.loads(data.decode())
-        except Exception as e:
-            print(f"Error recieving json from client - {e}")
+        except Exception:
             return None
         
     def create_chat(users, creator, conn, chat_name=None, is_group=False):
@@ -124,6 +122,15 @@ if __name__ == "__main__":
                 current_chats[username] = chat_id
 
             send_json(clients[username], {"type": "chat_open", "chat_id": chat_id, "messages": messages})
+    def get_users(requesting_user):
+        with sqlite3.connect("chatapp.db") as dbconn:
+            cur = dbconn.cursor()
+            cur.execute("SELECT username FROM users")
+            users = [row[0] for row in cur.fetchall()]
+            send_json(clients[requesting_user], {
+                "type": "users_got",
+                "users": users
+            })
     def msg(user, content):
         with current_chats_lock:
             chat_id = current_chats.get(user)
@@ -224,6 +231,30 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error sending file for user {user}: {e}")
             send_json(sock, {"type": "error", "content": "Failed to send file"})
+    def change_password(username, old_password, new_password, conn):
+        try:
+            with sqlite3.connect("chatapp.db") as dbconn:
+                dbconn.execute("PRAGMA foreign_keys = ON")
+                cur = dbconn.cursor()
+
+                cur.execute("select password from users where username = ?", (username,))
+                row = cur.fetchone()
+                if not row:
+                    send_json(conn, {"type": "error", "content": "User does not exist"})
+                    return
+
+                current_password = row[0]
+                if current_password != old_password:
+                    send_json(conn, {"type": "error", "content": "Old password is incorrect"})
+                    return
+
+                cur.execute("update users set password = ? where username = ?", (new_password, username))
+                dbconn.commit()
+                send_json(conn, {"type": "success", "content": "Password changed successfully"})
+
+        except Exception as e:
+            print(f"Error changing password for {username}: {e}")
+            send_json(conn, {"type": "error", "content": "Failed to change password"})
     def sql_init():
         try:
             with sqlite3.connect("chatapp.db") as dbconn:
@@ -286,7 +317,7 @@ if __name__ == "__main__":
                                 with clients_lock:
                                     clients[username] = conn
                                 print(f"Client {username} registered and connected")
-                                send_json(conn, {"type": "loginsuccess", "content": "User registered"})
+                                send_json(conn, {"type": "loginsuccess", "content": username})
                         
                         elif json_type == "login":
                             if not user_row:
@@ -298,7 +329,7 @@ if __name__ == "__main__":
                                     with clients_lock:
                                         clients[username] = conn
                                     print(f"Client {username} logged in")
-                                    send_json(conn, {"type": "loginsuccess", "content": "Logged in successfully"})
+                                    send_json(conn, {"type": "loginsuccess", "content": username})
                                 else:
                                     send_json(conn, {"type": "loginerror", "content": "Wrong password"})
                                     username = None
@@ -319,10 +350,16 @@ if __name__ == "__main__":
                         open_chat(message.get("chat_id"), username)
                     elif json_type == "msg":
                         msg(username, message.get("content"))
+                    elif json_type == "get_users":
+                        get_users(username)
                     elif json_type == "close_chat":
                         with current_chats_lock:
                             current_chats[message.get('user')] = None
                         send_json(clients[message.get('user')], {"type" : "closed_chat"})
+                    elif json_type == "change_password":
+                        old_pw = message.get("old_password")
+                        new_pw = message.get("new_password")
+                        change_password(username, old_pw, new_pw, clients[username])
                     elif json_type == "send_file":
                         file_name = message.get("file_name")
                         file_size = message.get("file_size")
@@ -336,7 +373,7 @@ if __name__ == "__main__":
                         file_id = message.get("file_id")
                         download_file(username, file_id, clients[username], chat_id)
         except Exception as e:
-            print(f"Error with client {username} : {e}")
+            pass
         finally:
             if username:
                 with clients_lock:

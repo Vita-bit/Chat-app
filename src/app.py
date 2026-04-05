@@ -63,6 +63,54 @@ class ChatItem(QtWidgets.QFrame):
             }
         """)
 
+class PasswordChangeWindow(QtWidgets.QWidget):
+    def __init__(self, username):
+        super().__init__()
+        self.username = username
+        self.setWindowTitle("Change Password")
+        self.setFixedSize(300, 200)
+
+        self.setStyleSheet("""
+            QWidget { background-color: hsl(0,0,60); color: white; }
+            QLineEdit { background-color: hsl(0,0,50); border-radius:5px; padding:5px; color:white; }
+            QPushButton { background-color: hsl(213,100%,50%); border-radius:5px; padding:8px; font-weight:bold; }
+            QPushButton:hover { background-color: hsl(213,100%,60%); }
+            QLabel { color:white; font-size:12pt; }
+        """)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        self.old_pw_input = QtWidgets.QLineEdit()
+        self.old_pw_input.setPlaceholderText("Old Password")
+        self.old_pw_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addWidget(self.old_pw_input)
+
+        self.new_pw_input = QtWidgets.QLineEdit()
+        self.new_pw_input.setPlaceholderText("New Password")
+        self.new_pw_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addWidget(self.new_pw_input)
+
+        self.confirm_btn = QtWidgets.QPushButton("Confirm")
+        self.confirm_btn.clicked.connect(self.change_password)
+        layout.addWidget(self.confirm_btn)
+
+    def change_password(self):
+        old_pw = self.old_pw_input.text().strip()
+        new_pw = self.new_pw_input.text().strip()
+        if not old_pw or not new_pw:
+            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in both fields")
+            return
+        send_json(s, {
+            "type": "change_password",
+            "username": self.username,
+            "old_password": old_pw,
+            "new_password": new_pw
+        })
+        QtWidgets.QMessageBox.information(self, "Success", "Password change requested")
+        self.close()
+
 class LeftPanel(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -91,6 +139,8 @@ class LeftPanel(QtWidgets.QWidget):
         top_row.addWidget(self.new_chat_btn)
         main_layout.addLayout(top_row)
 
+        self.new_chat_btn.clicked.connect(self.open_new_chat_window)
+
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -106,6 +156,38 @@ class LeftPanel(QtWidgets.QWidget):
         self.scroll_area.setWidget(self.chats_container)
         main_layout.addWidget(self.scroll_area)
 
+        self.bottom_bar = QtWidgets.QFrame()
+        self.bottom_bar.setFixedHeight(60)
+        self.bottom_bar.setStyleSheet("background-color: hsl(0,0,50);")
+        bottom_layout = QtWidgets.QHBoxLayout(self.bottom_bar)
+        bottom_layout.setContentsMargins(10, 5, 10, 5)
+
+        self.username_label = QtWidgets.QLabel(username if username else "Username")
+        self.username_label.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        self.username_label.setMinimumWidth(50)
+        self.username_label.setMaximumWidth(130)
+        self.username_label.setText(self.username_label.fontMetrics().elidedText(username, QtCore.Qt.ElideRight, 200))
+        bottom_layout.addWidget(self.username_label)
+
+        bottom_layout.addStretch()
+
+        self.edit_password_btn = QtWidgets.QPushButton("Change Password")
+        self.edit_password_btn.setFixedSize(120, 30)
+        self.edit_password_btn.setStyleSheet("""
+            QPushButton {
+                background-color: hsl(213, 100%, 50%);
+                font-size: 9pt;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: hsl(213, 100%, 60%);
+            }
+        """)
+        self.edit_password_btn.clicked.connect(self.open_password_window)
+        bottom_layout.addWidget(self.edit_password_btn)
+
+        main_layout.addWidget(self.bottom_bar)
+
     def add_chat(self, chat_name, last_message, chat_id):
         chat_item = ChatItem(chat_name, last_message, chat_id)
         self.scroll_layout.insertWidget(self.scroll_layout.count()-1, chat_item)
@@ -116,6 +198,15 @@ class LeftPanel(QtWidgets.QWidget):
             last_message = c.get("last_message", "")
             chat_id = c.get("id")
             self.add_chat(name, last_message, chat_id)
+        
+    def open_new_chat_window(self):
+        self.new_chat_window = NewChatWindow([], username)
+        self.new_chat_window.show()
+        send_json(s, {"type": "get_users"})
+
+    def open_password_window(self):
+        self.pw_window = PasswordChangeWindow(username)
+        self.pw_window.show()
 
 class ChatPanel(QtWidgets.QWidget):
     def __init__(self, send_callback=None):
@@ -123,18 +214,18 @@ class ChatPanel(QtWidgets.QWidget):
         self.send_callback = send_callback
         self.current_chat_id = None
 
-        main_layout = QtCore.QVBoxLayout(self)
+        main_layout = QtWidgets.QVBoxLayout(self)
 
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.messages_container = QtWidgets.QWidget()
-        self.messages_layout = QtCore.QVBoxLayout(self.messages_container)
+        self.messages_layout = QtWidgets.QVBoxLayout(self.messages_container)
         self.messages_layout.addStretch()
         self.messages_layout.setAlignment(QtCore.Qt.AlignTop)
         self.scroll_area.setWidget(self.messages_container)
         main_layout.addWidget(self.scroll_area)
 
-        input_layout = QtCore.QHBoxLayout()
+        input_layout = QtWidgets.QHBoxLayout()
         self.message_input = QtWidgets.QLineEdit()
         self.send_button = QtWidgets.QPushButton("Send")
         self.send_button.clicked.connect(self._send_clicked)
@@ -168,6 +259,104 @@ class ChatPanel(QtWidgets.QWidget):
             self.add_message("Me", text, me=True)
             self.message_input.clear()
 
+class NewChatWindow(QtWidgets.QWidget):
+    chat_created = QtCore.Signal(dict)
+
+    def __init__(self, all_users, owner_username):
+        super().__init__()
+        self.setWindowTitle("Create New Chat")
+        self.setFixedSize(400, 500)
+        self.owner_username = owner_username
+        self.selected_users = set()
+
+        self.setStyleSheet("""
+            QWidget { background-color: hsl(0,0,60); color: white; }
+            QLineEdit { background-color: hsl(0,0,50); border-radius:5px; padding:5px; color:white; }
+            QPushButton { background-color: hsl(213,100%,50%); border-radius:5px; padding:8px; font-weight:bold; }
+            QPushButton:hover { background-color: hsl(213,100%,60%); }
+            QLabel { color:white; font-size:12pt; }
+        """)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        self.avatar_btn = QtWidgets.QPushButton("Select Chat Picture")
+        self.avatar_btn.clicked.connect(self.select_avatar)
+        self.avatar_pixmap = None
+        layout.addWidget(self.avatar_btn)
+
+        self.name_input = QtWidgets.QLineEdit()
+        self.name_input.setPlaceholderText("Chat Name")
+        layout.addWidget(self.name_input)
+
+        self.search_input = QtWidgets.QLineEdit()
+        self.search_input.setPlaceholderText("Search users...")
+        layout.addWidget(self.search_input)
+        self.search_input.textChanged.connect(self.update_user_list)
+
+        self.user_list_widget = QtWidgets.QListWidget()
+        layout.addWidget(self.user_list_widget)
+
+        self.all_users = all_users
+        self.update_user_list()
+
+        self.create_btn = QtWidgets.QPushButton("Create Chat")
+        self.create_btn.clicked.connect(self.create_chat)
+        layout.addWidget(self.create_btn)
+
+    def select_avatar(self):
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Chat Picture", "", "Images (*.png *.jpg *.jpeg)")
+        if file_path:
+            pixmap = QtGui.QPixmap(file_path)
+            self.avatar_pixmap = pixmap.scaled(50, 50, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+            self.avatar_btn.setText("Picture Selected")
+
+    def update_user_list(self):
+        search_text = self.search_input.text().lower()
+        self.user_list_widget.clear()
+
+        for user in self.all_users:
+            if user.lower() == self.owner_username.lower():
+                continue
+            if search_text in user.lower():
+                item = QtWidgets.QListWidgetItem(user)
+                item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
+                item.setCheckState(QtCore.Qt.Unchecked)
+                self.user_list_widget.addItem(item)
+
+    def create_chat(self):
+        chat_name = self.name_input.text().strip()
+        if not chat_name:
+            QtWidgets.QMessageBox.warning(self, "Error", "Please enter a chat name")
+            return
+
+        selected_users = [self.user_list_widget.item(i).text() 
+                          for i in range(self.user_list_widget.count()) 
+                          if self.user_list_widget.item(i).checkState() == QtCore.Qt.Checked]
+
+        if not selected_users:
+            QtWidgets.QMessageBox.warning(self, "Error", "Please select at least one user")
+            return
+
+        selected_users.append(self.owner_username)
+
+        chat_data = {
+            "name": chat_name,
+            "users": selected_users,
+            "avatar": None
+        }
+
+        if self.avatar_pixmap:
+            ba = QtCore.QByteArray()
+            buffer = QtCore.QBuffer(ba)
+            buffer.open(QtCore.QIODevice.WriteOnly)
+            self.avatar_pixmap.save(buffer, "PNG")
+            chat_data["avatar"] = ba.data()
+
+        self.chat_created.emit(chat_data)
+        self.close()
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
@@ -191,9 +380,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.chat_panel = ChatPanel(send_callback=self.send_message_to_server)
         self.layout.addWidget(self.chat_panel)
 
-        for i in range(100):
-            self.left_panel.add_chat(f"Chat {i+1}", "Hi", i)
-
         for i in range(self.left_panel.scroll_layout.count()-1):
             item = self.left_panel.scroll_layout.itemAt(i).widget()
             if isinstance(item, ChatItem):
@@ -201,6 +387,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __center_on_screen__(self):
         self.move(int((self.screen_res.width() / 2) - (self.frameSize().width() / 2)), int((self.screen_res.height() / 2) - (self.frameSize().height() / 2)))
+
+    def send_message_to_server(self, chat_id, content):
+        if not s:
+            print("No server connection!")
+            return
+        send_json(s, {
+            "type": "msg",
+            "chat_id": chat_id,
+            "sender": self.username,
+            "content": content
+        })
 
 class LoginWindow(QtWidgets.QWidget):
     login_success = QtCore.Signal(str)
@@ -280,6 +477,7 @@ class LoginWindow(QtWidgets.QWidget):
         self.register_btn.clicked.connect(self.attempt_register)
 
     def attempt_login(self):
+        global username
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
         if not username or not password:
@@ -289,6 +487,7 @@ class LoginWindow(QtWidgets.QWidget):
         send_json(self.s, {"type": "login", "username": username, "password": password})
 
     def attempt_register(self):
+        global username
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
         if not username or not password:
@@ -419,7 +618,16 @@ def listener():
         elif msg_type == "loginsuccess":
             login_window.login_success.emit(msg.get("content"))
         elif msg_type == "loginerror":
-            login_window.login_success.emit(msg.get("content"))
+            login_window.login_error.emit(msg.get("content"))
+        elif msg_type == "users_got":
+            global all_users
+            all_users = msg.get("users", [])
+
+            if main_window:
+                win = main_window.left_panel.new_chat_window
+                if win:
+                    win.all_users = all_users
+                    win.update_user_list()
         elif msg_type == "chats_got":
             chats = msg.get("chats")
             if main_window:
@@ -467,30 +675,37 @@ def listener():
         print("Error receiving message:", e)
 
 def start_login(connected_socket):
-        global s, login_window, main_window
-        s = connected_socket
-        threading.Thread(target=listener, daemon=True).start()
+    global s, login_window, main_window
+    s = connected_socket
+    threading.Thread(target=listener, daemon=True).start()
 
-        login_window = LoginWindow(s)
+    login_window = LoginWindow(s)
+    login_window.show()
+
+    def handle_login_success(user):
+        global username, main_window
+        username = user
         main_window = MainWindow()
-        login_window.show()
-        login_window.login_success.connect(lambda username: main_window.show())
-        login_window.login_success.connect(login_window.close)
-        login_window.login_error.connect(lambda err: QtWidgets.QMessageBox.warning(login_window, "Login Failed", err))
+        main_window.username = username
+        main_window.left_panel.username_label.setText(username)
+        main_window.show()
+        login_window.close()
+
+    login_window.login_success.connect(handle_login_success)
+    login_window.login_error.connect(lambda err: QtWidgets.QMessageBox.warning(login_window, "Login Failed", err))
 
 if __name__ == "__main__":
 
     login_window = None
     main_window = None
     current_chat_id = None
+    username = None
     running = True
     app = QtWidgets.QApplication(sys.argv)
 
     connect_window = ConnectWindow()
     connect_window.connected.connect(start_login)
     connect_window.show()
-
-    print("\nType 'help' for commands")
 
     """while running:
         if not running:
