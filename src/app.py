@@ -41,7 +41,7 @@ class ChatItem(QtWidgets.QFrame):
         message_font = QtGui.QFont()
         message_font.setPointSize(9)
         self.message_label.setFont(message_font)
-        self.message_label.setStyleSheet("color: hsl(0,0,100);")
+        self.message_label.setStyleSheet("color: hsl(0,0,100); font-weight: 500;")
         self.message_label.setWordWrap(True)
 
         text_layout.addWidget(self.name_label)
@@ -140,7 +140,7 @@ class PasswordChangeWindow(QtWidgets.QWidget):
         old_pw = self.old_pass_input.text().strip()
         new_pw = self.new_pass_input.text().strip()
         if not old_pw or not new_pw:
-            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in both fields")
+            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in both fields.")
             return
         
         send_json(s, {
@@ -518,6 +518,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not s:
             print("No server connection!")
             return
+        
         send_json(s, {
             "type": "msg",
             "chat_id": chat_id,
