@@ -71,8 +71,8 @@ class FileMessageWidget(QtWidgets.QFrame):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
-        name_label = QtWidgets.QLabel(f"<b>{sender}</b>")
-        name_label.setStyleSheet("color: white;")
+        name_label = QtWidgets.QLabel(sender)
+        name_label.setStyleSheet("color: white; font-weight: bold; font-size: 15px;")
         layout.addWidget(name_label)
 
         file_label = QtWidgets.QLabel(file_name)
@@ -96,7 +96,11 @@ class FileMessageWidget(QtWidgets.QFrame):
         }))
         layout.addWidget(download_btn)
 
-        bg = "#2e86de" if me else "hsl(0,0,30)"
+        if me:
+            bg = "#2e86de"
+        else:
+            bg = "hsl(0,0,30)"
+
         self.setStyleSheet(f"QFrame {{ background-color:{bg}; border-radius:8px; margin:2px; }}")
 
 class PasswordChangeWindow(QtWidgets.QWidget):
@@ -118,26 +122,27 @@ class PasswordChangeWindow(QtWidgets.QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        self.old_pw_input = QtWidgets.QLineEdit()
-        self.old_pw_input.setPlaceholderText("Old Password")
-        self.old_pw_input.setEchoMode(QtWidgets.QLineEdit.Password)
-        layout.addWidget(self.old_pw_input)
+        self.old_pass_input = QtWidgets.QLineEdit()
+        self.old_pass_input.setPlaceholderText("Old Password")
+        self.old_pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addWidget(self.old_pass_input)
 
-        self.new_pw_input = QtWidgets.QLineEdit()
-        self.new_pw_input.setPlaceholderText("New Password")
-        self.new_pw_input.setEchoMode(QtWidgets.QLineEdit.Password)
-        layout.addWidget(self.new_pw_input)
+        self.new_pass_input = QtWidgets.QLineEdit()
+        self.new_pass_input.setPlaceholderText("New Password")
+        self.new_pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addWidget(self.new_pass_input)
 
         self.confirm_btn = QtWidgets.QPushButton("Confirm")
         self.confirm_btn.clicked.connect(self.change_password)
         layout.addWidget(self.confirm_btn)
 
     def change_password(self):
-        old_pw = self.old_pw_input.text().strip()
-        new_pw = self.new_pw_input.text().strip()
+        old_pw = self.old_pass_input.text().strip()
+        new_pw = self.new_pass_input.text().strip()
         if not old_pw or not new_pw:
             QtWidgets.QMessageBox.warning(self, "Error", "Please fill in both fields")
             return
+        
         send_json(s, {
             "type": "change_password",
             "username": self.username,
@@ -297,6 +302,7 @@ class ChatPanel(QtWidgets.QWidget):
 
         input_layout = QtWidgets.QHBoxLayout()
         self.message_input = QtWidgets.QLineEdit()
+        self.message_input.setFixedHeight(36)
         self.message_input.returnPressed.connect(self._send_clicked)
         self.message_input.setPlaceholderText("Type a message...")
 
@@ -795,10 +801,6 @@ def listener():
                 file_data = msg.get("file_data")
                 app_signals.file_download_ready.emit(file_name, file_data)
 
-            elif msg_type == "closed_chat":
-                clear_console()
-                print("Successfully closed chat")
-
             elif msg_type == "disconnect":
                 print(f"Disconnected from the server - {msg.get('content')}")
 
@@ -837,7 +839,9 @@ def handle_login_success(user):
 
     app_signals.chat_opened.connect(_on_chat_opened)
 
-    app_signals.new_message.connect(lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me))
+    app_signals.new_message.connect(
+        lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me)
+    )
     app_signals.file_received.connect(
         lambda sender, fname, mid, sat, me: main_window.chat_panel.add_file_message(sender, fname, mid, sat, me)
     )
@@ -859,20 +863,34 @@ def do_logout():
     username = None
     current_chat_id = None
 
-    try: app_signals.chats_received.disconnect()
-    except: pass
-    try: app_signals.chat_created.disconnect()
-    except: pass
-    try: app_signals.chat_opened.disconnect()
-    except: pass
-    try: app_signals.new_message.disconnect()
-    except: pass
-    try: app_signals.file_received.disconnect()
-    except: pass
-    try: app_signals.file_download_ready.disconnect()
-    except: pass
-    try: app_signals.server_message.disconnect()
-    except: pass
+    try:
+        app_signals.chats_received.disconnect()
+    except:
+        pass
+    try:
+        app_signals.chat_created.disconnect()
+    except:
+        pass
+    try:
+        app_signals.chat_opened.disconnect()
+    except:
+        pass
+    try:
+        app_signals.new_message.disconnect()
+    except:
+        pass
+    try:
+        app_signals.file_received.disconnect()
+    except:
+        pass
+    try:
+        app_signals.file_download_ready.disconnect()
+    except:
+        pass
+    try:
+        app_signals.server_message.disconnect()
+    except:
+        pass
 
     connect_window = ConnectWindow()
     connect_window.connected.connect(start_login)
@@ -886,6 +904,7 @@ def do_logout():
         s.close()
     except Exception:
         pass
+
     s = None
 
 def start_login(connected_socket):

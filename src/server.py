@@ -398,11 +398,6 @@ if __name__ == "__main__":
                     elif json_type == "get_users":
                         get_users(username)
 
-                    elif json_type == "close_chat":
-                        with current_chats_lock:
-                            current_chats[message.get('user')] = None
-                        send_json(clients[message.get('user')], {"type" : "closed_chat"})
-
                     elif json_type == "change_password":
                         old_pw = message.get("old_password")
                         new_pw = message.get("new_password")
@@ -454,3 +449,4 @@ if __name__ == "__main__":
         while True:
             conn, addr = s.accept()
             threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
+    
