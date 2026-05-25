@@ -80,8 +80,8 @@ class FileMessageWidget(QtWidgets.QFrame):
         file_label.setWordWrap(True)
         layout.addWidget(file_label)
 
-        time_label = QtWidgets.QLabel(f"<small>{sent_at}</small>")
-        time_label.setStyleSheet("color: rgba(255,255,255,0.6);")
+        time_label = QtWidgets.QLabel(sent_at)
+        time_label.setStyleSheet("color: rgba(255,255,255,0.6); font-weight: 300; font-size: 10px;")
         layout.addWidget(time_label)
 
         download_btn = QtWidgets.QPushButton("Download")
@@ -97,7 +97,7 @@ class FileMessageWidget(QtWidgets.QFrame):
         layout.addWidget(download_btn)
 
         if me:
-            bg = "#2e86de"
+            bg = "hsl(58,73,53)"
         else:
             bg = "hsl(0,0,30)"
 
@@ -809,16 +809,19 @@ def listener():
 
 def _handle_download(file_name, file_data):
     save_path, _ = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", file_name)
+
     if not save_path:
         return
     try:
         with open(save_path, "wb") as f:
             f.write(base64.b64decode(file_data))
+
     except Exception as e:
         QtWidgets.QMessageBox.warning(None, "Error", f"Failed to save file: {e}")
 
 def _on_chat_opened(chat_id, msgs):
     main_window.chat_panel.open_chat(chat_id)
+
     for m in msgs:
         me = m["sender"] == username
         if m.get("file_name"):
@@ -834,11 +837,12 @@ def handle_login_success(user):
     main_window.left_panel.username_label.setText(username)
     main_window.show()
     login_window.close()
+
     app_signals.chats_received.connect(main_window.left_panel.update_chats)
-    app_signals.chat_created.connect(lambda name, last, cid: main_window.left_panel.add_chat(name, last, cid))
-
+    app_signals.chat_created.connect(
+        lambda name, last, cid: main_window.left_panel.add_chat(name, last, cid)
+    )
     app_signals.chat_opened.connect(_on_chat_opened)
-
     app_signals.new_message.connect(
         lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me)
     )
@@ -846,7 +850,6 @@ def handle_login_success(user):
         lambda sender, fname, mid, sat, me: main_window.chat_panel.add_file_message(sender, fname, mid, sat, me)
     )
     app_signals.file_download_ready.connect(_handle_download)
-
     app_signals.server_message.connect(lambda level, content:
         QtWidgets.QMessageBox.warning(main_window, "Success" if level == "info" else "Error", content)
     ) 
