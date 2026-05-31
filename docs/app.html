@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>app module &#8212; src  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="server module" href="server.html" />
+    <link rel="prev" title="src documentation" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-app">
+<span id="app-module"></span><h1>app module<a class="headerlink" href="#module-app" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="app.AppSignals">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">AppSignals</span></span><a class="reference internal" href="_modules/app.html#AppSignals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.AppSignals" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QObject</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.chat_created">
+<span class="sig-name descname"><span class="pre">chat_created</span></span><a class="headerlink" href="#app.AppSignals.chat_created" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.chat_opened">
+<span class="sig-name descname"><span class="pre">chat_opened</span></span><a class="headerlink" href="#app.AppSignals.chat_opened" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.chats_received">
+<span class="sig-name descname"><span class="pre">chats_received</span></span><a class="headerlink" href="#app.AppSignals.chats_received" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.file_download_ready">
+<span class="sig-name descname"><span class="pre">file_download_ready</span></span><a class="headerlink" href="#app.AppSignals.file_download_ready" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.file_received">
+<span class="sig-name descname"><span class="pre">file_received</span></span><a class="headerlink" href="#app.AppSignals.file_received" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.logged_out">
+<span class="sig-name descname"><span class="pre">logged_out</span></span><a class="headerlink" href="#app.AppSignals.logged_out" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.new_message">
+<span class="sig-name descname"><span class="pre">new_message</span></span><a class="headerlink" href="#app.AppSignals.new_message" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.server_message">
+<span class="sig-name descname"><span class="pre">server_message</span></span><a class="headerlink" href="#app.AppSignals.server_message" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.AppSignals.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;AppSignals&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QObject&quot;:</span> <span class="pre">Methods:</span>&#160;&#160; <span class="pre">#4</span> <span class="pre">type=Signal,</span> <span class="pre">signature=chats_received(QVariantList),</span> <span class="pre">parameters=QVariantList</span>&#160;&#160; <span class="pre">#5</span> <span class="pre">type=Signal,</span> <span class="pre">signature=chat_created(QString,QString,int),</span> <span class="pre">parameters=QString,</span> <span class="pre">QString,</span> <span class="pre">int</span>&#160;&#160; <span class="pre">#6</span> <span class="pre">type=Signal,</span> <span class="pre">signature=chat_opened(int,QVariantList),</span> <span class="pre">parameters=int,</span> <span class="pre">QVariantList</span>&#160;&#160; <span class="pre">#7</span> <span class="pre">type=Signal,</span> <span class="pre">signature=new_message(QString,QString,bool),</span> <span class="pre">parameters=QString,</span> <span class="pre">QString,</span> <span class="pre">bool</span>&#160;&#160; <span class="pre">#8</span> <span class="pre">type=Signal,</span> <span class="pre">signature=file_received(QString,QString,int,QString,bool),</span> <span class="pre">parameters=QString,</span> <span class="pre">QString,</span> <span class="pre">int,</span> <span class="pre">QString,</span> <span class="pre">bool</span>&#160;&#160; <span class="pre">#9</span> <span class="pre">type=Signal,</span> <span class="pre">signature=file_download_ready(QString,QString),</span> <span class="pre">parameters=QString,</span> <span class="pre">QString</span>&#160;&#160; <span class="pre">#10</span> <span class="pre">type=Signal,</span> <span class="pre">signature=logged_out()</span>&#160;&#160; <span class="pre">#11</span> <span class="pre">type=Signal,</span> <span class="pre">signature=server_message(QString,QString),</span> <span class="pre">parameters=QString,</span> <span class="pre">QString</span> <span class="pre">)</span></span><a class="headerlink" href="#app.AppSignals.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.ChatItem">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">ChatItem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chat_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#ChatItem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.ChatItem" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QFrame</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.ChatItem.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;ChatItem&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QFrame&quot;:</span> <span class="pre">)</span></span><a class="headerlink" href="#app.ChatItem.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.ChatPanel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">ChatPanel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">send_callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">callable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#ChatPanel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.ChatPanel" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QWidget</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="app.ChatPanel.add_file_message">
+<span class="sig-name descname"><span class="pre">add_file_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sender</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sent_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">me</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#ChatPanel.add_file_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.ChatPanel.add_file_message" title="Link to this definition">¶</a></dt>
+<dd><p>Append a file message widget to the chat panel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.ChatPanel.add_message">
+<span class="sig-name descname"><span class="pre">add_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sender</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">me</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#ChatPanel.add_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.ChatPanel.add_message" title="Link to this definition">¶</a></dt>
+<dd><p>Append a text message bubble to the chat panel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.ChatPanel.open_chat">
+<span class="sig-name descname"><span class="pre">open_chat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#ChatPanel.open_chat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.ChatPanel.open_chat" title="Link to this definition">¶</a></dt>
+<dd><p>Switch the panel to the specified chat, clearing all currently displayed messages.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.ChatPanel.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;ChatPanel&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QWidget&quot;:</span> <span class="pre">)</span></span><a class="headerlink" href="#app.ChatPanel.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.ConnectWindow">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">ConnectWindow</span></span><a class="reference internal" href="_modules/app.html#ConnectWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.ConnectWindow" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QWidget</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.ConnectWindow.connected">
+<span class="sig-name descname"><span class="pre">connected</span></span><a class="headerlink" href="#app.ConnectWindow.connected" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.ConnectWindow.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;ConnectWindow&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QWidget&quot;:</span> <span class="pre">Methods:</span>&#160;&#160; <span class="pre">#33</span> <span class="pre">type=Signal,</span> <span class="pre">signature=connected(PyObject),</span> <span class="pre">parameters=PyObject</span> <span class="pre">)</span></span><a class="headerlink" href="#app.ConnectWindow.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.FileMessageWidget">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">FileMessageWidget</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sender</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sent_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">me</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#FileMessageWidget"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.FileMessageWidget" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QFrame</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.FileMessageWidget.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;FileMessageWidget&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QFrame&quot;:</span> <span class="pre">)</span></span><a class="headerlink" href="#app.FileMessageWidget.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.LeftPanel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">LeftPanel</span></span><a class="reference internal" href="_modules/app.html#LeftPanel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LeftPanel" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QWidget</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LeftPanel.add_chat">
+<span class="sig-name descname"><span class="pre">add_chat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chat_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LeftPanel.add_chat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LeftPanel.add_chat" title="Link to this definition">¶</a></dt>
+<dd><p>Add a new <a class="reference internal" href="#app.ChatItem" title="app.ChatItem"><code class="xref py py-class docutils literal notranslate"><span class="pre">ChatItem</span></code></a> to the scrollable chat list.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LeftPanel.open_chat">
+<span class="sig-name descname"><span class="pre">open_chat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LeftPanel.open_chat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LeftPanel.open_chat" title="Link to this definition">¶</a></dt>
+<dd><p>Open a chat by ID in the chat panel and notify the server.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LeftPanel.open_menu">
+<span class="sig-name descname"><span class="pre">open_menu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LeftPanel.open_menu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LeftPanel.open_menu" title="Link to this definition">¶</a></dt>
+<dd><p>Display a context menu with options to change the password or log out.
+Opens <a class="reference internal" href="#app.PasswordChangeWindow" title="app.PasswordChangeWindow"><code class="xref py py-class docutils literal notranslate"><span class="pre">PasswordChangeWindow</span></code></a> on the change-password action,
+or sends a logout request to the server.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LeftPanel.open_new_chat_window">
+<span class="sig-name descname"><span class="pre">open_new_chat_window</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LeftPanel.open_new_chat_window"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LeftPanel.open_new_chat_window" title="Link to this definition">¶</a></dt>
+<dd><p>Open the <a class="reference internal" href="#app.NewChatWindow" title="app.NewChatWindow"><code class="xref py py-class docutils literal notranslate"><span class="pre">NewChatWindow</span></code></a> dialog. If it is already visible, bring it to the front.
+Also requests the full user list from the server.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.LeftPanel.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;LeftPanel&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QWidget&quot;:</span> <span class="pre">)</span></span><a class="headerlink" href="#app.LeftPanel.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LeftPanel.update_chats">
+<span class="sig-name descname"><span class="pre">update_chats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chats</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LeftPanel.update_chats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LeftPanel.update_chats" title="Link to this definition">¶</a></dt>
+<dd><p>Populate the chat list from a list of chat data dicts received from the server.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LeftPanel.update_last_message">
+<span class="sig-name descname"><span class="pre">update_last_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LeftPanel.update_last_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LeftPanel.update_last_message" title="Link to this definition">¶</a></dt>
+<dd><p>Update the last-message preview text for a chat item in the sidebar.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.LoginWindow">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">LoginWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">socket</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LoginWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LoginWindow" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QWidget</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LoginWindow.attempt_login">
+<span class="sig-name descname"><span class="pre">attempt_login</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LoginWindow.attempt_login"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LoginWindow.attempt_login" title="Link to this definition">¶</a></dt>
+<dd><p>Read the username and password fields and send a login request to the server.
+Shows a warning dialog if either field is empty.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.LoginWindow.attempt_register">
+<span class="sig-name descname"><span class="pre">attempt_register</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#LoginWindow.attempt_register"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.LoginWindow.attempt_register" title="Link to this definition">¶</a></dt>
+<dd><p>Read the username and password fields and send a register request to the server.
+Shows a warning dialog if either field is empty.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.LoginWindow.login_error">
+<span class="sig-name descname"><span class="pre">login_error</span></span><a class="headerlink" href="#app.LoginWindow.login_error" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.LoginWindow.login_success">
+<span class="sig-name descname"><span class="pre">login_success</span></span><a class="headerlink" href="#app.LoginWindow.login_success" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.LoginWindow.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;LoginWindow&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QWidget&quot;:</span> <span class="pre">Methods:</span>&#160;&#160; <span class="pre">#33</span> <span class="pre">type=Signal,</span> <span class="pre">signature=login_success(QString),</span> <span class="pre">parameters=QString</span>&#160;&#160; <span class="pre">#34</span> <span class="pre">type=Signal,</span> <span class="pre">signature=login_error(QString),</span> <span class="pre">parameters=QString</span> <span class="pre">)</span></span><a class="headerlink" href="#app.LoginWindow.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.MainWindow">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">MainWindow</span></span><a class="reference internal" href="_modules/app.html#MainWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.MainWindow" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QMainWindow</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="app.MainWindow.open_chat">
+<span class="sig-name descname"><span class="pre">open_chat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#MainWindow.open_chat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.MainWindow.open_chat" title="Link to this definition">¶</a></dt>
+<dd><p>Open the specified chat in the chat panel and request its messages from the server.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.MainWindow.send_message_to_server">
+<span class="sig-name descname"><span class="pre">send_message_to_server</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#MainWindow.send_message_to_server"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.MainWindow.send_message_to_server" title="Link to this definition">¶</a></dt>
+<dd><p>Send a text message to the server for the specified chat.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.MainWindow.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;MainWindow&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QMainWindow&quot;:</span> <span class="pre">)</span></span><a class="headerlink" href="#app.MainWindow.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.NewChatWindow">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">NewChatWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">all_users</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner_username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#NewChatWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.NewChatWindow" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QWidget</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.NewChatWindow.chat_created">
+<span class="sig-name descname"><span class="pre">chat_created</span></span><a class="headerlink" href="#app.NewChatWindow.chat_created" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.NewChatWindow.create_chat">
+<span class="sig-name descname"><span class="pre">create_chat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#NewChatWindow.create_chat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.NewChatWindow.create_chat" title="Link to this definition">¶</a></dt>
+<dd><p>Validate the chat name and selected users, then send a create_chat request to the server.
+Shows a warning dialog if the name is empty or no users are selected.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.NewChatWindow.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;NewChatWindow&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QWidget&quot;:</span> <span class="pre">Methods:</span>&#160;&#160; <span class="pre">#33</span> <span class="pre">type=Signal,</span> <span class="pre">signature=chat_created(QVariantMap),</span> <span class="pre">parameters=QVariantMap</span> <span class="pre">)</span></span><a class="headerlink" href="#app.NewChatWindow.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="app.NewChatWindow.update_user_list">
+<span class="sig-name descname"><span class="pre">update_user_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#NewChatWindow.update_user_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.NewChatWindow.update_user_list" title="Link to this definition">¶</a></dt>
+<dd><p>Refresh the user list widget to match the current search filter.
+Excludes the owner’s own username and performs a case-insensitive substring match.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="app.PasswordChangeWindow">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">PasswordChangeWindow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#PasswordChangeWindow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.PasswordChangeWindow" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QWidget</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="app.PasswordChangeWindow.change_password">
+<span class="sig-name descname"><span class="pre">change_password</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#PasswordChangeWindow.change_password"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.PasswordChangeWindow.change_password" title="Link to this definition">¶</a></dt>
+<dd><p>Read the old and new password inputs and send a change_password request to the server.
+Shows a warning dialog if either field is empty.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="app.PasswordChangeWindow.staticMetaObject">
+<span class="sig-name descname"><span class="pre">staticMetaObject</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">PySide6.QtCore.QMetaObject(&quot;PasswordChangeWindow&quot;</span> <span class="pre">inherits</span> <span class="pre">&quot;QWidget&quot;:</span> <span class="pre">)</span></span><a class="headerlink" href="#app.PasswordChangeWindow.staticMetaObject" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.clear_console">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">clear_console</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#clear_console"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.clear_console" title="Link to this definition">¶</a></dt>
+<dd><p>Clear the terminal console using the appropriate command for the current OS.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.do_logout">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">do_logout</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#do_logout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.do_logout" title="Link to this definition">¶</a></dt>
+<dd><p>Tear down the current session: disconnect all signals, close the main window,
+close the server socket, and show the <a class="reference internal" href="#app.ConnectWindow" title="app.ConnectWindow"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectWindow</span></code></a> to start a new session.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.handle_login_success">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">handle_login_success</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#handle_login_success"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.handle_login_success" title="Link to this definition">¶</a></dt>
+<dd><p>Initialise the main window after a successful login, connect all application signals,
+and request the user’s chat list from the server.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.listener">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">listener</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#listener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.listener" title="Link to this definition">¶</a></dt>
+<dd><p>Background thread target that continuously receives messages from the server
+and emits the appropriate <code class="xref py py-data docutils literal notranslate"><span class="pre">app_signals</span></code> for each message type.
+Runs until the connection is lost or an unrecoverable error occurs.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.recv_json">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">recv_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">socket</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/app.html#recv_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.recv_json" title="Link to this definition">¶</a></dt>
+<dd><p>Receive a length-prefixed JSON message from <em>socket</em> and return it as a dictionary.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.send_json">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">send_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">socket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">socket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/app.html#send_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.send_json" title="Link to this definition">¶</a></dt>
+<dd><p>Serialise <em>message</em> to JSON and send it over <em>socket</em> with a 4-byte big-endian length prefix.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="app.start_login">
+<span class="sig-prename descclassname"><span class="pre">app.</span></span><span class="sig-name descname"><span class="pre">start_login</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">connected_socket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">socket</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/app.html#start_login"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#app.start_login" title="Link to this definition">¶</a></dt>
+<dd><p>Store the connected socket, start the background listener thread,
+and show the <a class="reference internal" href="#app.LoginWindow" title="app.LoginWindow"><code class="xref py py-class docutils literal notranslate"><span class="pre">LoginWindow</span></code></a>.</p>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">src</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">app module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#app.AppSignals"><code class="docutils literal notranslate"><span class="pre">AppSignals</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.chat_created"><code class="docutils literal notranslate"><span class="pre">AppSignals.chat_created</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.chat_opened"><code class="docutils literal notranslate"><span class="pre">AppSignals.chat_opened</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.chats_received"><code class="docutils literal notranslate"><span class="pre">AppSignals.chats_received</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.file_download_ready"><code class="docutils literal notranslate"><span class="pre">AppSignals.file_download_ready</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.file_received"><code class="docutils literal notranslate"><span class="pre">AppSignals.file_received</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.logged_out"><code class="docutils literal notranslate"><span class="pre">AppSignals.logged_out</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.new_message"><code class="docutils literal notranslate"><span class="pre">AppSignals.new_message</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.server_message"><code class="docutils literal notranslate"><span class="pre">AppSignals.server_message</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.AppSignals.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">AppSignals.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.ChatItem"><code class="docutils literal notranslate"><span class="pre">ChatItem</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.ChatItem.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">ChatItem.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.ChatPanel"><code class="docutils literal notranslate"><span class="pre">ChatPanel</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.ChatPanel.add_file_message"><code class="docutils literal notranslate"><span class="pre">ChatPanel.add_file_message()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.ChatPanel.add_message"><code class="docutils literal notranslate"><span class="pre">ChatPanel.add_message()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.ChatPanel.open_chat"><code class="docutils literal notranslate"><span class="pre">ChatPanel.open_chat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.ChatPanel.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">ChatPanel.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.ConnectWindow"><code class="docutils literal notranslate"><span class="pre">ConnectWindow</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.ConnectWindow.connected"><code class="docutils literal notranslate"><span class="pre">ConnectWindow.connected</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.ConnectWindow.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">ConnectWindow.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.FileMessageWidget"><code class="docutils literal notranslate"><span class="pre">FileMessageWidget</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.FileMessageWidget.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">FileMessageWidget.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.LeftPanel"><code class="docutils literal notranslate"><span class="pre">LeftPanel</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.LeftPanel.add_chat"><code class="docutils literal notranslate"><span class="pre">LeftPanel.add_chat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LeftPanel.open_chat"><code class="docutils literal notranslate"><span class="pre">LeftPanel.open_chat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LeftPanel.open_menu"><code class="docutils literal notranslate"><span class="pre">LeftPanel.open_menu()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LeftPanel.open_new_chat_window"><code class="docutils literal notranslate"><span class="pre">LeftPanel.open_new_chat_window()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LeftPanel.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">LeftPanel.staticMetaObject</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LeftPanel.update_chats"><code class="docutils literal notranslate"><span class="pre">LeftPanel.update_chats()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LeftPanel.update_last_message"><code class="docutils literal notranslate"><span class="pre">LeftPanel.update_last_message()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.LoginWindow"><code class="docutils literal notranslate"><span class="pre">LoginWindow</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.LoginWindow.attempt_login"><code class="docutils literal notranslate"><span class="pre">LoginWindow.attempt_login()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LoginWindow.attempt_register"><code class="docutils literal notranslate"><span class="pre">LoginWindow.attempt_register()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LoginWindow.login_error"><code class="docutils literal notranslate"><span class="pre">LoginWindow.login_error</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LoginWindow.login_success"><code class="docutils literal notranslate"><span class="pre">LoginWindow.login_success</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.LoginWindow.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">LoginWindow.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.MainWindow"><code class="docutils literal notranslate"><span class="pre">MainWindow</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.MainWindow.open_chat"><code class="docutils literal notranslate"><span class="pre">MainWindow.open_chat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.MainWindow.send_message_to_server"><code class="docutils literal notranslate"><span class="pre">MainWindow.send_message_to_server()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.MainWindow.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">MainWindow.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.NewChatWindow"><code class="docutils literal notranslate"><span class="pre">NewChatWindow</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.NewChatWindow.chat_created"><code class="docutils literal notranslate"><span class="pre">NewChatWindow.chat_created</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.NewChatWindow.create_chat"><code class="docutils literal notranslate"><span class="pre">NewChatWindow.create_chat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.NewChatWindow.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">NewChatWindow.staticMetaObject</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.NewChatWindow.update_user_list"><code class="docutils literal notranslate"><span class="pre">NewChatWindow.update_user_list()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.PasswordChangeWindow"><code class="docutils literal notranslate"><span class="pre">PasswordChangeWindow</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#app.PasswordChangeWindow.change_password"><code class="docutils literal notranslate"><span class="pre">PasswordChangeWindow.change_password()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#app.PasswordChangeWindow.staticMetaObject"><code class="docutils literal notranslate"><span class="pre">PasswordChangeWindow.staticMetaObject</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#app.clear_console"><code class="docutils literal notranslate"><span class="pre">clear_console()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.do_logout"><code class="docutils literal notranslate"><span class="pre">do_logout()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.handle_login_success"><code class="docutils literal notranslate"><span class="pre">handle_login_success()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.listener"><code class="docutils literal notranslate"><span class="pre">listener()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.recv_json"><code class="docutils literal notranslate"><span class="pre">recv_json()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.send_json"><code class="docutils literal notranslate"><span class="pre">send_json()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#app.start_login"><code class="docutils literal notranslate"><span class="pre">start_login()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">server module</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">src documentation</a></li>
+      <li>Next: <a href="server.html" title="next chapter">server module</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Author.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/app.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
