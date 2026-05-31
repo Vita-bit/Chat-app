@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>app &#8212; src  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for app</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">PySide6</span><span class="w"> </span><span class="kn">import</span> <span class="n">QtCore</span><span class="p">,</span> <span class="n">QtWidgets</span><span class="p">,</span> <span class="n">QtGui</span>
+
+<div class="viewcode-block" id="AppSignals">
+<a class="viewcode-back" href="../app.html#app.AppSignals">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AppSignals</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="n">chats_received</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">chat_created</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span>
+    <span class="n">chat_opened</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+    <span class="n">new_message</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="n">file_received</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="n">file_download_ready</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+    <span class="n">logged_out</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">()</span>
+    <span class="n">server_message</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChatItem">
+<a class="viewcode-back" href="../app.html#app.ChatItem">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChatItem</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QFrame</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chat_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">last_message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A clickable frame widget representing a single chat in the chat list.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chat_id</span> <span class="o">=</span> <span class="n">chat_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedHeight</span><span class="p">(</span><span class="mi">70</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setCursor</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">PointingHandCursor</span><span class="p">)</span>
+
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="n">text_layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">()</span>
+        <span class="n">text_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">text_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_label</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="n">chat_name</span><span class="p">)</span>
+        <span class="n">name_font</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QFont</span><span class="p">()</span>
+        <span class="n">name_font</span><span class="o">.</span><span class="n">setPointSize</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+        <span class="n">name_font</span><span class="o">.</span><span class="n">setBold</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_label</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="n">name_font</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="n">last_message</span><span class="p">)</span>
+        <span class="n">message_font</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QFont</span><span class="p">()</span>
+        <span class="n">message_font</span><span class="o">.</span><span class="n">setPointSize</span><span class="p">(</span><span class="mi">9</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="n">message_font</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: hsl(0,0,100);&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setWordWrap</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">text_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_label</span><span class="p">)</span>
+        <span class="n">text_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message_label</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">text_layout</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QFrame {</span>
+<span class="s2">                background-color: hsl(0,0,60);</span>
+<span class="s2">            }</span>
+<span class="s2">            QFrame:hover {</span>
+<span class="s2">                background-color: hsl(0,0,50);</span>
+<span class="s2">            }</span>
+<span class="s2">            QLabel {</span>
+<span class="s2">                background-color: transparent;               </span>
+<span class="s2">            }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FileMessageWidget">
+<a class="viewcode-back" href="../app.html#app.FileMessageWidget">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FileMessageWidget</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QFrame</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">sent_at</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">me</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A frame widget displaying a file message with sender info and a download button.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_id</span> <span class="o">=</span> <span class="n">message_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setSizePolicy</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QSizePolicy</span><span class="o">.</span><span class="n">Preferred</span><span class="p">,</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QSizePolicy</span><span class="o">.</span><span class="n">Minimum</span><span class="p">)</span>
+
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+
+        <span class="n">name_label</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;b&gt;</span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">&lt;/b&gt;&quot;</span><span class="p">)</span>
+        <span class="n">name_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: white;&quot;</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">name_label</span><span class="p">)</span>
+
+        <span class="n">file_label</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+        <span class="n">file_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: white;&quot;</span><span class="p">)</span>
+        <span class="n">file_label</span><span class="o">.</span><span class="n">setWordWrap</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">file_label</span><span class="p">)</span>
+
+        <span class="n">time_label</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;small&gt;</span><span class="si">{</span><span class="n">sent_at</span><span class="si">}</span><span class="s2">&lt;/small&gt;&quot;</span><span class="p">)</span>
+        <span class="n">time_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;color: rgba(255,255,255,0.6);&quot;</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">time_label</span><span class="p">)</span>
+
+        <span class="n">download_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Download&quot;</span><span class="p">)</span>
+        <span class="n">download_btn</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton { background-color: rgba(255,255,255,0.2); color:white; border-radius:4px; padding: 4px 8px; }</span>
+<span class="s2">            QPushButton:hover { background-color: rgba(255,255,255,0.35); }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="n">download_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;request_download&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;file_id&quot;</span><span class="p">:</span> <span class="n">message_id</span><span class="p">,</span>
+            <span class="s2">&quot;chat_id&quot;</span><span class="p">:</span> <span class="n">main_window</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">current_chat_id</span>
+        <span class="p">}))</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">download_btn</span><span class="p">)</span>
+
+        <span class="n">bg</span> <span class="o">=</span> <span class="s2">&quot;#2e86de&quot;</span> <span class="k">if</span> <span class="n">me</span> <span class="k">else</span> <span class="s2">&quot;hsl(0,0,30)&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;QFrame </span><span class="se">{{</span><span class="s2"> background-color:</span><span class="si">{</span><span class="n">bg</span><span class="si">}</span><span class="s2">; border-radius:8px; margin:2px; </span><span class="se">}}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PasswordChangeWindow">
+<a class="viewcode-back" href="../app.html#app.PasswordChangeWindow">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PasswordChangeWindow</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A dialog window for changing the current user&#39;s password.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Change Password&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QWidget { background-color: hsl(0,0,60); color: white; }</span>
+<span class="s2">            QLineEdit { background-color: hsl(0,0,50); border-radius:5px; padding:5px; color:white; }</span>
+<span class="s2">            QPushButton { background-color: hsl(213,100%,50%); border-radius:5px; padding:8px; font-weight:bold; }</span>
+<span class="s2">            QPushButton:hover { background-color: hsl(213,100%,60%); }</span>
+<span class="s2">            QLabel { color:white; font-size:12pt; }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_pw_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_pw_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Old Password&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_pw_input</span><span class="o">.</span><span class="n">setEchoMode</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="o">.</span><span class="n">Password</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_pw_input</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_pw_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_pw_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;New Password&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_pw_input</span><span class="o">.</span><span class="n">setEchoMode</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="o">.</span><span class="n">Password</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">new_pw_input</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">confirm_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Confirm&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">confirm_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">change_password</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">confirm_btn</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PasswordChangeWindow.change_password">
+<a class="viewcode-back" href="../app.html#app.PasswordChangeWindow.change_password">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">change_password</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read the old and new password inputs and send a change_password request to the server.</span>
+<span class="sd">        Shows a warning dialog if either field is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">old_pw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">old_pw_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">new_pw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">new_pw_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">old_pw</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">new_pw</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Please fill in both fields&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;change_password&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+            <span class="s2">&quot;old_password&quot;</span><span class="p">:</span> <span class="n">old_pw</span><span class="p">,</span>
+            <span class="s2">&quot;new_password&quot;</span><span class="p">:</span> <span class="n">new_pw</span>
+        <span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+</div>
+
+
+<div class="viewcode-block" id="LeftPanel">
+<a class="viewcode-back" href="../app.html#app.LeftPanel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LeftPanel</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The left sidebar panel containing the chat list, an add-chat button,</span>
+<span class="sd">        and a bottom bar with the username and settings menu.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;background-color: hsl(0,0,60);&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedWidth</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>
+
+        <span class="n">main_layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;＋ Add Chat&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_btn</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">130</span><span class="p">,</span> <span class="mi">40</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_btn</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton {</span>
+<span class="s2">                background-color: hsl(213, 100%, 50%);</span>
+<span class="s2">                font-weight: bold;</span>
+<span class="s2">                font-size: 12pt;</span>
+<span class="s2">                text-align: center;</span>
+<span class="s2">            }</span>
+<span class="s2">            QPushButton:hover {</span>
+<span class="s2">                background-color: hsl(213, 100%, 60%);</span>
+<span class="s2">            }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="n">top_row</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">()</span>
+        <span class="n">top_row</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="n">top_row</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">new_chat_btn</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">top_row</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">open_new_chat_window</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setHorizontalScrollBarPolicy</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ScrollBarAlwaysOff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setVerticalScrollBarPolicy</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ScrollBarAlwaysOff</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;border: none;&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">chats_container</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chats_container</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chats_container</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">bottom_bar</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QFrame</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bottom_bar</span><span class="o">.</span><span class="n">setFixedHeight</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bottom_bar</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;background-color: hsl(0,0,50);&quot;</span><span class="p">)</span>
+        <span class="n">bottom_layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_bar</span><span class="p">)</span>
+        <span class="n">bottom_layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_label</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="n">username</span> <span class="k">if</span> <span class="n">username</span> <span class="k">else</span> <span class="s2">&quot;Username&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_label</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;font-weight: bold; font-size: 12pt; padding-left: 8px;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_label</span><span class="o">.</span><span class="n">setMinimumWidth</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_label</span><span class="o">.</span><span class="n">setMaximumWidth</span><span class="p">(</span><span class="mi">130</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_label</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignVCenter</span> <span class="o">|</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignLeft</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">username_label</span><span class="o">.</span><span class="n">fontMetrics</span><span class="p">()</span><span class="o">.</span><span class="n">elidedText</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ElideRight</span><span class="p">,</span> <span class="mi">200</span><span class="p">))</span>
+        <span class="n">bottom_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">username_label</span><span class="p">)</span>
+
+        <span class="n">bottom_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">menu_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;☰&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">menu_btn</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">36</span><span class="p">,</span> <span class="mi">36</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">menu_btn</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton { background-color: transparent; color: white; font-size: 18pt; border-radius: 5px; }</span>
+<span class="s2">            QPushButton:hover { background-color: hsl(0,0,60); }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">menu_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">open_menu</span><span class="p">)</span>
+        <span class="n">bottom_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">menu_btn</span><span class="p">)</span>
+
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bottom_bar</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LeftPanel.open_menu">
+<a class="viewcode-back" href="../app.html#app.LeftPanel.open_menu">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Display a context menu with options to change the password or log out.</span>
+<span class="sd">        Opens :class:`PasswordChangeWindow` on the change-password action,</span>
+<span class="sd">        or sends a logout request to the server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">menu</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMenu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">menu</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QMenu { background-color: hsl(0,0,50); color: white; border: 1px solid hsl(0,0,40); padding: 4px; }</span>
+<span class="s2">            QMenu::item { padding: 8px 20px; border-radius: 4px; }</span>
+<span class="s2">            QMenu::item:selected { background-color: hsl(213,100%,50%); }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="n">change_pw_action</span> <span class="o">=</span> <span class="n">menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="s2">&quot;Change Password&quot;</span><span class="p">)</span>
+        <span class="n">menu</span><span class="o">.</span><span class="n">addSeparator</span><span class="p">()</span>
+        <span class="n">logout_action</span> <span class="o">=</span> <span class="n">menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="s2">&quot;Logout&quot;</span><span class="p">)</span>
+
+        <span class="n">action</span> <span class="o">=</span> <span class="n">menu</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">menu_btn</span><span class="o">.</span><span class="n">mapToGlobal</span><span class="p">(</span>
+            <span class="n">QtCore</span><span class="o">.</span><span class="n">QPoint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">menu</span><span class="o">.</span><span class="n">sizeHint</span><span class="p">()</span><span class="o">.</span><span class="n">height</span><span class="p">())</span>
+        <span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">change_pw_action</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pw_window</span> <span class="o">=</span> <span class="n">PasswordChangeWindow</span><span class="p">(</span><span class="n">username</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pw_window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="n">logout_action</span><span class="p">:</span>
+            <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;logout&quot;</span><span class="p">,</span> <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span>
+            <span class="n">app_signals</span><span class="o">.</span><span class="n">logged_out</span><span class="o">.</span><span class="n">emit</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="LeftPanel.update_last_message">
+<a class="viewcode-back" href="../app.html#app.LeftPanel.update_last_message">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_last_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the last-message preview text for a chat item in the sidebar.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">count</span><span class="p">()):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">itemAt</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">widget</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">ChatItem</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">chat_id</span> <span class="o">==</span> <span class="n">chat_id</span><span class="p">:</span>
+                <span class="n">text</span> <span class="o">=</span> <span class="n">content</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">45</span> <span class="k">else</span> <span class="n">content</span><span class="p">[:</span><span class="mi">42</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;...&quot;</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">message_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+                <span class="k">break</span></div>
+
+
+<div class="viewcode-block" id="LeftPanel.add_chat">
+<a class="viewcode-back" href="../app.html#app.LeftPanel.add_chat">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_chat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chat_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">last_message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add a new :class:`ChatItem` to the scrollable chat list.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">last_message</span><span class="p">:</span>
+            <span class="n">last_message</span> <span class="o">=</span> <span class="s2">&quot;Start the conversation&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">last_message</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">45</span><span class="p">:</span>
+            <span class="n">last_message</span> <span class="o">=</span> <span class="n">last_message</span><span class="p">[:</span><span class="mi">42</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;...&quot;</span>
+        <span class="n">chat_item</span> <span class="o">=</span> <span class="n">ChatItem</span><span class="p">(</span><span class="n">chat_name</span><span class="p">,</span> <span class="n">last_message</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">)</span>
+        <span class="n">chat_item</span><span class="o">.</span><span class="n">mousePressEvent</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">e</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="n">chat_id</span><span class="p">:</span> <span class="n">main_window</span><span class="o">.</span><span class="n">open_chat</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">chat_item</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LeftPanel.open_chat">
+<a class="viewcode-back" href="../app.html#app.LeftPanel.open_chat">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_chat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Open a chat by ID in the chat panel and notify the server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">open_chat</span><span class="p">(</span><span class="n">chat_id</span><span class="p">)</span>
+        <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;open_chat&quot;</span><span class="p">,</span> <span class="s2">&quot;chat_id&quot;</span><span class="p">:</span> <span class="n">chat_id</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="LeftPanel.update_chats">
+<a class="viewcode-back" href="../app.html#app.LeftPanel.update_chats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_chats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chats</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Populate the chat list from a list of chat data dicts received from the server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">chats</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+            <span class="n">last_message</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;last_message&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">chat_id</span> <span class="o">=</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_chat</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">last_message</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">)</span></div>
+
+        
+<div class="viewcode-block" id="LeftPanel.open_new_chat_window">
+<a class="viewcode-back" href="../app.html#app.LeftPanel.open_new_chat_window">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_new_chat_window</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Open the :class:`NewChatWindow` dialog. If it is already visible, bring it to the front.</span>
+<span class="sd">        Also requests the full user list from the server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;new_chat_window&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_window</span><span class="o">.</span><span class="n">isVisible</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_window</span><span class="o">.</span><span class="n">raise_</span><span class="p">()</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_window</span> <span class="o">=</span> <span class="n">NewChatWindow</span><span class="p">(</span><span class="n">all_users</span> <span class="k">if</span> <span class="s1">&#39;all_users&#39;</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span> <span class="k">else</span> <span class="p">[],</span> <span class="n">username</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_chat_window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+        <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;get_users&quot;</span><span class="p">})</span></div>
+</div>
+
+
+<div class="viewcode-block" id="ChatPanel">
+<a class="viewcode-back" href="../app.html#app.ChatPanel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChatPanel</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">send_callback</span><span class="p">:</span> <span class="nb">callable</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The main chat panel displaying messages for the active chat and an input area.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_callback</span> <span class="o">=</span> <span class="n">send_callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_chat_id</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">main_layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QScrollArea</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidgetResizable</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages_container</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">messages_container</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignTop</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">setWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">messages_container</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="p">)</span>
+
+        <span class="n">input_layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_input</span><span class="o">.</span><span class="n">returnPressed</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_send_clicked</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Type a message...&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_button</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Send&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_button</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton { background-color: hsl(213,100%,50%); color:white; border-radius:5px; padding:6px 12px; font-weight:bold; }</span>
+<span class="s2">            QPushButton:hover { background-color: hsl(213,100%,60%); }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_button</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_send_clicked</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_button</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;🗎&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_button</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">36</span><span class="p">,</span> <span class="mi">36</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_button</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton { background-color: hsl(0,0,50); color:white; border-radius:5px; font-size:14pt; }</span>
+<span class="s2">            QPushButton:hover { background-color: hsl(0,0,60); }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file_button</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_send_file_clicked</span><span class="p">)</span>
+
+        <span class="n">input_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message_input</span><span class="p">)</span>
+        <span class="n">input_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file_button</span><span class="p">)</span>
+        <span class="n">input_layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">send_button</span><span class="p">)</span>
+        <span class="n">main_layout</span><span class="o">.</span><span class="n">addLayout</span><span class="p">(</span><span class="n">input_layout</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ChatPanel.open_chat">
+<a class="viewcode-back" href="../app.html#app.ChatPanel.open_chat">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_chat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Switch the panel to the specified chat, clearing all currently displayed messages.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_chat_id</span> <span class="o">=</span> <span class="n">chat_id</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)):</span>
+            <span class="n">widget</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">itemAt</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">widget</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">widget</span><span class="p">:</span>
+                <span class="n">widget</span><span class="o">.</span><span class="n">setParent</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ChatPanel.add_message">
+<a class="viewcode-back" href="../app.html#app.ChatPanel.add_message">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">me</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Append a text message bubble to the chat panel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bubble</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;b&gt;</span><span class="si">{</span><span class="n">sender</span><span class="si">}</span><span class="s2">&lt;/b&gt;&lt;br&gt;</span><span class="si">{</span><span class="n">content</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">bubble</span><span class="o">.</span><span class="n">setWordWrap</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">bubble</span><span class="o">.</span><span class="n">setMaximumWidth</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">()</span> <span class="o">*</span> <span class="mf">0.65</span><span class="p">)))</span>
+        <span class="n">bubble</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span>
+            <span class="s2">&quot;padding:8px; border-radius:8px; margin:2px; background-color: #2e86de; color: white;&quot;</span>
+            <span class="k">if</span> <span class="n">me</span> <span class="k">else</span>
+            <span class="s2">&quot;padding:8px; border-radius:8px; margin:2px; background-color: hsl(0,0,30); color: white;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">row</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">()</span>
+        <span class="n">row</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">me</span><span class="p">:</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">bubble</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">bubble</span><span class="p">)</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+
+        <span class="n">container</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">()</span>
+        <span class="n">container</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="n">container</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;background: transparent;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">container</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">verticalScrollBar</span><span class="p">()</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">verticalScrollBar</span><span class="p">()</span><span class="o">.</span><span class="n">maximum</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="ChatPanel.add_file_message">
+<a class="viewcode-back" href="../app.html#app.ChatPanel.add_file_message">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_file_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sender</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">message_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">sent_at</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">me</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Append a file message widget to the chat panel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">widget</span> <span class="o">=</span> <span class="n">FileMessageWidget</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">file_name</span><span class="p">,</span> <span class="n">message_id</span><span class="p">,</span> <span class="n">sent_at</span><span class="p">,</span> <span class="n">me</span><span class="o">=</span><span class="n">me</span><span class="p">)</span>
+        <span class="n">widget</span><span class="o">.</span><span class="n">setMaximumWidth</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">500</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">()</span> <span class="o">*</span> <span class="mf">0.65</span><span class="p">)))</span>
+
+        <span class="n">row</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">()</span>
+        <span class="n">row</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">me</span><span class="p">:</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">widget</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="n">widget</span><span class="p">)</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">addStretch</span><span class="p">()</span>
+
+        <span class="n">container</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">()</span>
+        <span class="n">container</span><span class="o">.</span><span class="n">setLayout</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="n">container</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;background: transparent;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">insertWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">messages_layout</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">container</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">verticalScrollBar</span><span class="p">()</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scroll_area</span><span class="o">.</span><span class="n">verticalScrollBar</span><span class="p">()</span><span class="o">.</span><span class="n">maximum</span><span class="p">())</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_send_clicked</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle the send button click or Return key press.</span>
+<span class="sd">        Invokes :attr:`send_callback` with the current chat ID and input text,</span>
+<span class="sd">        then clears the input field.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">message_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">text</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_callback</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_chat_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_chat_id</span><span class="p">,</span> <span class="n">text</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message_input</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_send_file_clicked</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Open a file picker dialog and send the selected file to the server as base64-encoded data.</span>
+<span class="sd">        Shows a warning if no chat is active or if the file cannot be read.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_chat_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Open a chat first&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">file_path</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QFileDialog</span><span class="o">.</span><span class="n">getOpenFileName</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Select File&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file_path</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">file_data</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+            <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;send_file&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;chat_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_chat_id</span><span class="p">,</span>
+                <span class="s2">&quot;file_name&quot;</span><span class="p">:</span> <span class="n">file_name</span><span class="p">,</span>
+                <span class="s2">&quot;file_data&quot;</span><span class="p">:</span> <span class="n">file_data</span>
+            <span class="p">})</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Failed to send file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NewChatWindow">
+<a class="viewcode-back" href="../app.html#app.NewChatWindow">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">NewChatWindow</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="n">chat_created</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">all_users</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">owner_username</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A dialog window for creating a new group chat.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Create New Chat&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">owner_username</span> <span class="o">=</span> <span class="n">owner_username</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QWidget { background-color: hsl(0,0,60); color: white; }</span>
+<span class="s2">            QLineEdit { background-color: hsl(0,0,50); border-radius:5px; padding:5px; color:white; }</span>
+<span class="s2">            QPushButton { background-color: hsl(213,100%,50%); border-radius:5px; padding:8px; font-weight:bold; }</span>
+<span class="s2">            QPushButton:hover { background-color: hsl(213,100%,60%); }</span>
+<span class="s2">            QLabel { color:white; font-size:12pt; }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Chat Name&quot;</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name_input</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">search_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">search_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Search users...&quot;</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">search_input</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">search_input</span><span class="o">.</span><span class="n">textChanged</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update_user_list</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_list_widget</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QListWidget</span><span class="p">()</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">user_list_widget</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_users</span> <span class="o">=</span> <span class="n">all_users</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_user_list</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Create Chat&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">create_chat</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">create_btn</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NewChatWindow.update_user_list">
+<a class="viewcode-back" href="../app.html#app.NewChatWindow.update_user_list">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_user_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Refresh the user list widget to match the current search filter.</span>
+<span class="sd">        Excludes the owner&#39;s own username and performs a case-insensitive substring match.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">search_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_list_widget</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_users</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">user</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner_username</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">search_text</span> <span class="ow">in</span> <span class="n">user</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="n">item</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QListWidgetItem</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">setFlags</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">flags</span><span class="p">()</span> <span class="o">|</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">ItemIsUserCheckable</span><span class="p">)</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">setCheckState</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Unchecked</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">user_list_widget</span><span class="o">.</span><span class="n">addItem</span><span class="p">(</span><span class="n">item</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NewChatWindow.create_chat">
+<a class="viewcode-back" href="../app.html#app.NewChatWindow.create_chat">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_chat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate the chat name and selected users, then send a create_chat request to the server.</span>
+<span class="sd">        Shows a warning dialog if the name is empty or no users are selected.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">chat_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">chat_name</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Please enter a chat name&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">selected_users</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">user_list_widget</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">user_list_widget</span><span class="o">.</span><span class="n">count</span><span class="p">())</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_list_widget</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">checkState</span><span class="p">()</span> <span class="o">==</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">Checked</span>
+        <span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_users</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Please select at least one user&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">selected_users</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">owner_username</span><span class="p">)</span>
+
+        <span class="n">message</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;create_chat&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;creator&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">owner_username</span><span class="p">,</span>
+            <span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="n">selected_users</span><span class="p">,</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">chat_name</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;No server connection!&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+</div>
+
+
+<div class="viewcode-block" id="MainWindow">
+<a class="viewcode-back" href="../app.html#app.MainWindow">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MainWindow</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMainWindow</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The main application window composed of :class:`LeftPanel` and :class:`ChatPanel`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">screen_res</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QScreen</span><span class="o">.</span><span class="n">availableSize</span><span class="p">(</span><span class="n">QtGui</span><span class="o">.</span><span class="n">QGuiApplication</span><span class="o">.</span><span class="n">primaryScreen</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setMinimumSize</span><span class="p">(</span><span class="mi">700</span><span class="p">,</span> <span class="mi">800</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Chat App&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setMouseTracking</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">central_widget</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">central_widget</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                background-color: hsl(0, 0, 40);</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setCentralWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">central_widget</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QHBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">central_widget</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">left_panel</span> <span class="o">=</span> <span class="n">LeftPanel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left_panel</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">chat_panel</span> <span class="o">=</span> <span class="n">ChatPanel</span><span class="p">(</span><span class="n">send_callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">send_message_to_server</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chat_panel</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left_panel</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_panel</span><span class="o">.</span><span class="n">scroll_layout</span><span class="o">.</span><span class="n">itemAt</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">widget</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">ChatItem</span><span class="p">):</span>
+                <span class="n">item</span><span class="o">.</span><span class="n">mousePressEvent</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">e</span><span class="p">,</span> <span class="n">chat_id</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">chat_id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_chat</span><span class="p">(</span><span class="n">chat_id</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MainWindow.send_message_to_server">
+<a class="viewcode-back" href="../app.html#app.MainWindow.send_message_to_server">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send_message_to_server</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send a text message to the server for the specified chat.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No server connection!&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;msg&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chat_id&quot;</span><span class="p">:</span> <span class="n">chat_id</span><span class="p">,</span>
+            <span class="s2">&quot;sender&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+            <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">content</span>
+        <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="MainWindow.open_chat">
+<a class="viewcode-back" href="../app.html#app.MainWindow.open_chat">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_chat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Open the specified chat in the chat panel and request its messages from the server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">open_chat</span><span class="p">(</span><span class="n">chat_id</span><span class="p">)</span>
+        <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;open_chat&quot;</span><span class="p">,</span> <span class="s2">&quot;chat_id&quot;</span><span class="p">:</span> <span class="n">chat_id</span><span class="p">})</span></div>
+</div>
+
+
+<div class="viewcode-block" id="LoginWindow">
+<a class="viewcode-back" href="../app.html#app.LoginWindow">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoginWindow</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="n">login_success</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">login_error</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> 
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The login/register window presented after a successful server connection.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">s</span> <span class="o">=</span> <span class="n">s</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Login&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QWidget {</span>
+<span class="s2">                background-color: hsl(0,0,60);</span>
+<span class="s2">                color: white;</span>
+<span class="s2">                font-size: 12pt;</span>
+<span class="s2">            }</span>
+<span class="s2">            QLineEdit {</span>
+<span class="s2">                background-color: hsl(0,0,50);</span>
+<span class="s2">                border-radius: 5px;</span>
+<span class="s2">                padding: 5px;</span>
+<span class="s2">                color: white;</span>
+<span class="s2">            }</span>
+<span class="s2">            QPushButton {</span>
+<span class="s2">                background-color: hsl(213, 100%, 50%);</span>
+<span class="s2">                border-radius: 5px;</span>
+<span class="s2">                padding: 8px;</span>
+<span class="s2">                font-weight: bold;</span>
+<span class="s2">            }</span>
+<span class="s2">            QPushButton:hover {</span>
+<span class="s2">                background-color: hsl(213, 100%, 60%);</span>
+<span class="s2">            }</span>
+<span class="s2">            QLabel {</span>
+<span class="s2">                color: white;</span>
+<span class="s2">                font-size: 24pt;</span>
+<span class="s2">            }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Chat App&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignCenter</span><span class="p">)</span>
+        <span class="n">title_font</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QFont</span><span class="p">()</span>
+        <span class="n">title_font</span><span class="o">.</span><span class="n">setBold</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="n">title_font</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">username_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Username&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">username_input</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">password_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Password&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password_input</span><span class="o">.</span><span class="n">setEchoMode</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="o">.</span><span class="n">Password</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">password_input</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">login_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Login&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">login_btn</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Register&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_btn</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QPushButton {</span>
+<span class="s2">                background-color: hsl(0,0,50%);</span>
+<span class="s2">                color: white;</span>
+<span class="s2">                border-radius: 5px;</span>
+<span class="s2">                padding: 8px;</span>
+<span class="s2">                font-weight: bold;</span>
+<span class="s2">            }</span>
+<span class="s2">            QPushButton:hover {</span>
+<span class="s2">                background-color: hsl(0,0,60%);</span>
+<span class="s2">            }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_btn</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">login_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attempt_login</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attempt_register</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LoginWindow.attempt_login">
+<a class="viewcode-back" href="../app.html#app.LoginWindow.attempt_login">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">attempt_login</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read the username and password fields and send a login request to the server.</span>
+<span class="sd">        Shows a warning dialog if either field is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">username</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">password_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">username</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">password</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Please fill in all inputs&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">send_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;login&quot;</span><span class="p">,</span> <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">password</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="LoginWindow.attempt_register">
+<a class="viewcode-back" href="../app.html#app.LoginWindow.attempt_register">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">attempt_register</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read the username and password fields and send a register request to the server.</span>
+<span class="sd">        Shows a warning dialog if either field is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">username</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">username_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">password_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">username</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">password</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Please fill in all inputs&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        
+        <span class="n">send_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;register&quot;</span><span class="p">,</span> <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">password</span><span class="p">})</span></div>
+</div>
+
+
+<div class="viewcode-block" id="ConnectWindow">
+<a class="viewcode-back" href="../app.html#app.ConnectWindow">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConnectWindow</span><span class="p">(</span><span class="n">QtWidgets</span><span class="o">.</span><span class="n">QWidget</span><span class="p">):</span>
+    <span class="n">connected</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The initial window that prompts the user for a server IP and port before connecting.</span>
+<span class="sd">        Emits :attr:`connected` with the established socket on success.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setFixedSize</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s2">&quot;Connect to Server&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setStyleSheet</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            QWidget {</span>
+<span class="s2">                background-color: hsl(0,0,60);</span>
+<span class="s2">                color: white;</span>
+<span class="s2">                font-size: 12pt;</span>
+<span class="s2">            }</span>
+<span class="s2">            QLineEdit {</span>
+<span class="s2">                background-color: hsl(0,0,50);</span>
+<span class="s2">                border-radius: 5px;</span>
+<span class="s2">                padding: 5px;</span>
+<span class="s2">                color: white;</span>
+<span class="s2">            }</span>
+<span class="s2">            QPushButton {</span>
+<span class="s2">                background-color: hsl(213, 100%, 50%);</span>
+<span class="s2">                border-radius: 5px;</span>
+<span class="s2">                padding: 8px;</span>
+<span class="s2">                font-weight: bold;</span>
+<span class="s2">            }</span>
+<span class="s2">            QPushButton:hover {</span>
+<span class="s2">                background-color: hsl(213, 100%, 60%);</span>
+<span class="s2">            }</span>
+<span class="s2">            QLabel {</span>
+<span class="s2">                color: white;</span>
+<span class="s2">                font-size: 24pt;</span>
+<span class="s2">            }</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="p">)</span>
+
+        <span class="n">layout</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QVBoxLayout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setContentsMargins</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">setSpacing</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLabel</span><span class="p">(</span><span class="s2">&quot;Connect to Server&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="o">.</span><span class="n">setAlignment</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">Qt</span><span class="o">.</span><span class="n">AlignCenter</span><span class="p">)</span>
+        <span class="n">title_font</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QFont</span><span class="p">()</span>
+        <span class="n">title_font</span><span class="o">.</span><span class="n">setBold</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">title_font</span><span class="o">.</span><span class="n">setPointSize</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="o">.</span><span class="n">setFont</span><span class="p">(</span><span class="n">title_font</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ip_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ip_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Server IP&quot;</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ip_input</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">port_input</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QLineEdit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port_input</span><span class="o">.</span><span class="n">setPlaceholderText</span><span class="p">(</span><span class="s2">&quot;Port&quot;</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">port_input</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect_btn</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QPushButton</span><span class="p">(</span><span class="s2">&quot;Connect&quot;</span><span class="p">)</span>
+        <span class="n">layout</span><span class="o">.</span><span class="n">addWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connect_btn</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect_btn</span><span class="o">.</span><span class="n">clicked</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__attempt_connect__</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__attempt_connect__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate the IP and port inputs, attempt a TCP connection to the server,</span>
+<span class="sd">        and emit :attr:`connected` with the socket on success.</span>
+<span class="sd">        Shows a warning dialog on invalid input or connection failure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ip</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ip_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">port_text</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">port_input</span><span class="o">.</span><span class="n">text</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ip</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">port_text</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Please fill in all inputs&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port_text</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="s2">&quot;Port must be a number&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        
+        <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Error connecting: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="k">return</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="send_json">
+<a class="viewcode-back" href="../app.html#app.send_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">send_json</span><span class="p">(</span><span class="n">socket</span><span class="p">:</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Serialise *message* to JSON and send it over *socket* with a 4-byte big-endian length prefix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">message</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="n">socket</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">))</span>
+        <span class="n">socket</span><span class="o">.</span><span class="n">sendall</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error sending json to server - </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="recv_json">
+<a class="viewcode-back" href="../app.html#app.recv_json">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">recv_json</span><span class="p">(</span><span class="n">socket</span><span class="p">:</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Receive a length-prefixed JSON message from *socket* and return it as a dictionary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">length_bytes</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">length_bytes</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">length</span><span class="p">:</span>
+            <span class="n">chunk</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">length</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">data</span> <span class="o">+=</span> <span class="n">chunk</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error recieving message from server - </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="clear_console">
+<a class="viewcode-back" href="../app.html#app.clear_console">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clear_console</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clear the terminal console using the appropriate command for the current OS.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;cls&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;clear&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="listener">
+<a class="viewcode-back" href="../app.html#app.listener">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">listener</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Background thread target that continuously receives messages from the server</span>
+<span class="sd">    and emits the appropriate :data:`app_signals` for each message type.</span>
+<span class="sd">    Runs until the connection is lost or an unrecoverable error occurs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">recv_json</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">msg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Disconnected from the server&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="n">msg_type</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;success&quot;</span> <span class="ow">or</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span>
+                <span class="n">level</span> <span class="o">=</span> <span class="s2">&quot;info&quot;</span> <span class="k">if</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;success&quot;</span> <span class="k">else</span> <span class="s2">&quot;error&quot;</span>
+                <span class="n">app_signals</span><span class="o">.</span><span class="n">server_message</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;loginsuccess&quot;</span><span class="p">:</span>
+                <span class="n">login_window</span><span class="o">.</span><span class="n">login_success</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">))</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;loginerror&quot;</span><span class="p">:</span>
+                <span class="n">login_window</span><span class="o">.</span><span class="n">login_error</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">))</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;users_got&quot;</span><span class="p">:</span>
+                <span class="k">global</span> <span class="n">all_users</span>
+                <span class="n">all_users</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;users&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="k">if</span> <span class="n">main_window</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">main_window</span><span class="o">.</span><span class="n">left_panel</span><span class="p">,</span> <span class="s2">&quot;new_chat_window&quot;</span><span class="p">):</span>
+                    <span class="n">win</span> <span class="o">=</span> <span class="n">main_window</span><span class="o">.</span><span class="n">left_panel</span><span class="o">.</span><span class="n">new_chat_window</span>
+                    <span class="k">if</span> <span class="n">win</span><span class="o">.</span><span class="n">isVisible</span><span class="p">():</span>
+                        <span class="n">win</span><span class="o">.</span><span class="n">all_users</span> <span class="o">=</span> <span class="n">all_users</span>
+                        <span class="n">win</span><span class="o">.</span><span class="n">update_user_list</span><span class="p">()</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;chats_got&quot;</span><span class="p">:</span>
+                <span class="n">app_signals</span><span class="o">.</span><span class="n">chats_received</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chats&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;chat_open&quot;</span><span class="p">:</span>
+                <span class="k">global</span> <span class="n">current_chat_id</span>
+                <span class="n">current_chat_id</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chat_id&quot;</span><span class="p">)</span>
+                <span class="n">app_signals</span><span class="o">.</span><span class="n">chat_opened</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">current_chat_id</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;messages&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;chat_created&quot;</span><span class="p">:</span>
+                <span class="n">app_signals</span><span class="o">.</span><span class="n">chat_created</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span>
+                    <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chat_name&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;last_message&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chat_id&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;new_msg&quot;</span><span class="p">:</span>
+                <span class="n">chat_id</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chat_id&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">chat_id</span> <span class="o">==</span> <span class="n">current_chat_id</span><span class="p">:</span>
+                    <span class="n">me</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sender&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">username</span>
+                    <span class="n">app_signals</span><span class="o">.</span><span class="n">new_message</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sender&quot;</span><span class="p">),</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">),</span> <span class="n">me</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;new_file&quot;</span><span class="p">:</span>
+                <span class="n">chat_id</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chat_id&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">chat_id</span> <span class="o">==</span> <span class="n">current_chat_id</span><span class="p">:</span>
+                    <span class="n">me</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sender&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">username</span>
+                    <span class="n">app_signals</span><span class="o">.</span><span class="n">file_received</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sender&quot;</span><span class="p">),</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file_name&quot;</span><span class="p">),</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;message_id&quot;</span><span class="p">),</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sent_at&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span> <span class="n">me</span>
+                    <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;file_download&quot;</span><span class="p">:</span>
+                <span class="n">file_name</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file_name&quot;</span><span class="p">)</span>
+                <span class="n">file_data</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file_data&quot;</span><span class="p">)</span>
+                <span class="n">app_signals</span><span class="o">.</span><span class="n">file_download_ready</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">file_data</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;closed_chat&quot;</span><span class="p">:</span>
+                <span class="n">clear_console</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Successfully closed chat&quot;</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">msg_type</span> <span class="o">==</span> <span class="s2">&quot;disconnect&quot;</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Disconnected from the server - </span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error receiving message:&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span></div>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_handle_download</span><span class="p">(</span><span class="n">file_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">file_data</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prompt the user for a save location and write the downloaded file to disk.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">save_path</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QFileDialog</span><span class="o">.</span><span class="n">getSaveFileName</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Save File&quot;</span><span class="p">,</span> <span class="n">file_name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">save_path</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">file_data</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Failed to save file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_on_chat_opened</span><span class="p">(</span><span class="n">chat_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">msgs</span><span class="p">:</span> <span class="nb">list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Populate the chat panel with historical messages when a chat is opened.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">main_window</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">open_chat</span><span class="p">(</span><span class="n">chat_id</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">msgs</span><span class="p">:</span>
+        <span class="n">me</span> <span class="o">=</span> <span class="n">m</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">username</span>
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;file_name&quot;</span><span class="p">):</span>
+            <span class="n">main_window</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">add_file_message</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="s2">&quot;file_name&quot;</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="s2">&quot;message_id&quot;</span><span class="p">],</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sent_at&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span> <span class="n">me</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">main_window</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">add_message</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s2">&quot;sender&quot;</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="s2">&quot;content&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">me</span><span class="p">)</span>
+
+<div class="viewcode-block" id="handle_login_success">
+<a class="viewcode-back" href="../app.html#app.handle_login_success">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">handle_login_success</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialise the main window after a successful login, connect all application signals,</span>
+<span class="sd">    and request the user&#39;s chat list from the server.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">username</span><span class="p">,</span> <span class="n">main_window</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">user</span>
+    <span class="n">main_window</span> <span class="o">=</span> <span class="n">MainWindow</span><span class="p">()</span>
+    <span class="n">main_window</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">username</span>
+    <span class="n">main_window</span><span class="o">.</span><span class="n">left_panel</span><span class="o">.</span><span class="n">username_label</span><span class="o">.</span><span class="n">setText</span><span class="p">(</span><span class="n">username</span><span class="p">)</span>
+    <span class="n">main_window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="n">login_window</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">chats_received</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">main_window</span><span class="o">.</span><span class="n">left_panel</span><span class="o">.</span><span class="n">update_chats</span><span class="p">)</span>
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">chat_created</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">name</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">cid</span><span class="p">:</span> <span class="n">main_window</span><span class="o">.</span><span class="n">left_panel</span><span class="o">.</span><span class="n">add_chat</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">last</span><span class="p">,</span> <span class="n">cid</span><span class="p">))</span>
+
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">chat_opened</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">_on_chat_opened</span><span class="p">)</span>
+
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">new_message</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">sender</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">me</span><span class="p">:</span> <span class="n">main_window</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">add_message</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">me</span><span class="p">))</span>
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">file_received</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">sender</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">me</span><span class="p">:</span> <span class="n">main_window</span><span class="o">.</span><span class="n">chat_panel</span><span class="o">.</span><span class="n">add_file_message</span><span class="p">(</span><span class="n">sender</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">mid</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">me</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">file_download_ready</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">_handle_download</span><span class="p">)</span>
+
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">server_message</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">level</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span>
+        <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">main_window</span><span class="p">,</span> <span class="s2">&quot;Success&quot;</span> <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="s2">&quot;info&quot;</span> <span class="k">else</span> <span class="s2">&quot;Error&quot;</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
+    <span class="p">)</span> 
+
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">new_message</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">sender</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">me</span><span class="p">:</span>
+        <span class="n">main_window</span><span class="o">.</span><span class="n">left_panel</span><span class="o">.</span><span class="n">update_last_message</span><span class="p">(</span><span class="n">current_chat_id</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
+    <span class="p">)</span>
+   
+    <span class="n">send_json</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;get_chats&quot;</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="do_logout">
+<a class="viewcode-back" href="../app.html#app.do_logout">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">do_logout</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tear down the current session: disconnect all signals, close the main window,</span>
+<span class="sd">    close the server socket, and show the :class:`ConnectWindow` to start a new session.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">main_window</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">current_chat_id</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">connect_window</span>
+
+    <span class="n">username</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">current_chat_id</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span> <span class="n">app_signals</span><span class="o">.</span><span class="n">chats_received</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">app_signals</span><span class="o">.</span><span class="n">chat_created</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">app_signals</span><span class="o">.</span><span class="n">chat_opened</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">app_signals</span><span class="o">.</span><span class="n">new_message</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">app_signals</span><span class="o">.</span><span class="n">file_received</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">app_signals</span><span class="o">.</span><span class="n">file_download_ready</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span> <span class="n">app_signals</span><span class="o">.</span><span class="n">server_message</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+
+    <span class="n">connect_window</span> <span class="o">=</span> <span class="n">ConnectWindow</span><span class="p">()</span>
+    <span class="n">connect_window</span><span class="o">.</span><span class="n">connected</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">start_login</span><span class="p">)</span>
+    <span class="n">connect_window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">main_window</span><span class="p">:</span>
+        <span class="n">main_window</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">main_window</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="start_login">
+<a class="viewcode-back" href="../app.html#app.start_login">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">start_login</span><span class="p">(</span><span class="n">connected_socket</span><span class="p">:</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Store the connected socket, start the background listener thread,</span>
+<span class="sd">    and show the :class:`LoginWindow`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">s</span><span class="p">,</span> <span class="n">login_window</span><span class="p">,</span> <span class="n">main_window</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">connected_socket</span>
+    <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">listener</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="n">login_window</span> <span class="o">=</span> <span class="n">LoginWindow</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="n">login_window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="n">login_window</span><span class="o">.</span><span class="n">login_success</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">handle_login_success</span><span class="p">)</span>
+    <span class="n">login_window</span><span class="o">.</span><span class="n">login_error</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="k">lambda</span> <span class="n">err</span><span class="p">:</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">login_window</span><span class="p">,</span> <span class="s2">&quot;Login Failed&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">))</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="n">login_window</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">main_window</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">current_chat_id</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">setQuitOnLastWindowClosed</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">app_signals</span> <span class="o">=</span> <span class="n">AppSignals</span><span class="p">()</span>
+    <span class="n">app_signals</span><span class="o">.</span><span class="n">logged_out</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">do_logout</span><span class="p">)</span> 
+    <span class="n">connect_window</span> <span class="o">=</span> <span class="n">ConnectWindow</span><span class="p">()</span>
+    <span class="n">connect_window</span><span class="o">.</span><span class="n">connected</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">start_login</span><span class="p">)</span>
+    <span class="n">connect_window</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">exec</span><span class="p">())</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">src</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../app.html">app module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../server.html">server module</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Author.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

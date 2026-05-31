@@ -17,7 +17,10 @@ class AppSignals(QtCore.QObject):
     server_message = QtCore.Signal(str, str)
 
 class ChatItem(QtWidgets.QFrame):
-    def __init__(self, chat_name, last_message, chat_id):
+    def __init__(self, chat_name: str, last_message: str, chat_id: int):
+        """
+        A clickable frame widget representing a single chat in the chat list.
+        """
         super().__init__()
         self.chat_id = chat_id
         self.setFixedHeight(70)
@@ -62,7 +65,10 @@ class ChatItem(QtWidgets.QFrame):
         """)
 
 class FileMessageWidget(QtWidgets.QFrame):
-    def __init__(self, sender, file_name, message_id, sent_at, me=False):
+    def __init__(self, sender: str, file_name: str, message_id: int, sent_at: str, me: bool = False):
+        """
+        A frame widget displaying a file message with sender info and a download button.
+        """
         super().__init__()
         self.message_id = message_id
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
@@ -104,7 +110,10 @@ class FileMessageWidget(QtWidgets.QFrame):
         self.setStyleSheet(f"QFrame {{ background-color:{bg}; border-radius:8px; margin:2px; }}")
 
 class PasswordChangeWindow(QtWidgets.QWidget):
-    def __init__(self, username):
+    def __init__(self, username: str):
+        """
+        A dialog window for changing the current user's password.
+        """
         super().__init__()
         self.username = username
         self.setWindowTitle("Change Password")
@@ -137,8 +146,12 @@ class PasswordChangeWindow(QtWidgets.QWidget):
         layout.addWidget(self.confirm_btn)
 
     def change_password(self):
-        old_pw = self.old_pass_input.text().strip()
-        new_pw = self.new_pass_input.text().strip()
+        """
+        Read the old and new password inputs and send a change_password request to the server.
+        Shows a warning dialog if either field is empty.
+        """
+        old_pw = self.old_pw_input.text().strip()
+        new_pw = self.new_pw_input.text().strip()
         if not old_pw or not new_pw:
             QtWidgets.QMessageBox.warning(self, "Error", "Please fill in both fields.")
             return
@@ -153,6 +166,10 @@ class PasswordChangeWindow(QtWidgets.QWidget):
 
 class LeftPanel(QtWidgets.QWidget):
     def __init__(self):
+        """
+        The left sidebar panel containing the chat list, an add-chat button,
+        and a bottom bar with the username and settings menu.
+        """
         super().__init__()
         self.setStyleSheet("background-color: hsl(0,0,60);")
         self.setFixedWidth(300)
@@ -224,6 +241,11 @@ class LeftPanel(QtWidgets.QWidget):
         main_layout.addWidget(self.bottom_bar)
 
     def open_menu(self):
+        """
+        Display a context menu with options to change the password or log out.
+        Opens :class:`PasswordChangeWindow` on the change-password action,
+        or sends a logout request to the server.
+        """
         menu = QtWidgets.QMenu(self)
         menu.setStyleSheet("""
             QMenu { background-color: hsl(0,0,50); color: white; border: 1px solid hsl(0,0,40); padding: 4px; }
@@ -245,7 +267,10 @@ class LeftPanel(QtWidgets.QWidget):
             send_json(s, {"type": "logout", "username": username})
             app_signals.logged_out.emit()
 
-    def update_last_message(self, chat_id, content):
+    def update_last_message(self, chat_id: int, content: str):
+        """
+        Update the last-message preview text for a chat item in the sidebar.
+        """
         for i in range(self.scroll_layout.count()):
             item = self.scroll_layout.itemAt(i).widget()
             if isinstance(item, ChatItem) and item.chat_id == chat_id:
@@ -253,7 +278,10 @@ class LeftPanel(QtWidgets.QWidget):
                 item.message_label.setText(text)
                 break
 
-    def add_chat(self, chat_name, last_message, chat_id):
+    def add_chat(self, chat_name: str, last_message: str, chat_id: int):
+        """
+        Add a new :class:`ChatItem` to the scrollable chat list.
+        """
         if not last_message:
             last_message = "Start the conversation"
         if len(last_message) > 45:
@@ -262,11 +290,17 @@ class LeftPanel(QtWidgets.QWidget):
         chat_item.mousePressEvent = lambda e, cid=chat_id: main_window.open_chat(cid)
         self.scroll_layout.insertWidget(self.scroll_layout.count()-1, chat_item)
 
-    def open_chat(self, chat_id):
+    def open_chat(self, chat_id: int):
+        """
+        Open a chat by ID in the chat panel and notify the server.
+        """
         self.chat_panel.open_chat(chat_id)
         send_json(s, {"type": "open_chat", "chat_id": chat_id})
 
-    def update_chats(self, chats):
+    def update_chats(self, chats: list):
+        """
+        Populate the chat list from a list of chat data dicts received from the server.
+        """
         for c in chats:
             name = c.get("name")
             last_message = c.get("last_message", "")
@@ -274,6 +308,10 @@ class LeftPanel(QtWidgets.QWidget):
             self.add_chat(name, last_message, chat_id)
         
     def open_new_chat_window(self):
+        """
+        Open the :class:`NewChatWindow` dialog. If it is already visible, bring it to the front.
+        Also requests the full user list from the server.
+        """
         if hasattr(self, "new_chat_window") and self.new_chat_window.isVisible():
             self.new_chat_window.raise_()
             return
@@ -284,7 +322,10 @@ class LeftPanel(QtWidgets.QWidget):
         send_json(s, {"type": "get_users"})
 
 class ChatPanel(QtWidgets.QWidget):
-    def __init__(self, send_callback=None):
+    def __init__(self, send_callback: callable = None):
+        """
+        The main chat panel displaying messages for the active chat and an input area.
+        """
         super().__init__()
         self.send_callback = send_callback
         self.current_chat_id = None
@@ -326,14 +367,20 @@ class ChatPanel(QtWidgets.QWidget):
         input_layout.addWidget(self.send_button)
         main_layout.addLayout(input_layout)
 
-    def open_chat(self, chat_id):
+    def open_chat(self, chat_id: int):
+        """
+        Switch the panel to the specified chat, clearing all currently displayed messages.
+        """
         self.current_chat_id = chat_id
         for i in reversed(range(self.messages_layout.count() - 1)):
             widget = self.messages_layout.itemAt(i).widget()
             if widget:
                 widget.setParent(None)
 
-    def add_message(self, sender, content, me=False):
+    def add_message(self, sender: str, content: str, me: bool = False):
+        """
+        Append a text message bubble to the chat panel.
+        """
         bubble = QtWidgets.QLabel(f"<b>{sender}</b><br>{content}")
         bubble.setWordWrap(True)
         bubble.setMaximumWidth(min(500, int(self.width() * 0.65)))
@@ -358,7 +405,10 @@ class ChatPanel(QtWidgets.QWidget):
         self.messages_layout.insertWidget(self.messages_layout.count() - 1, container)
         self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
 
-    def add_file_message(self, sender, file_name, message_id, sent_at, me=False):
+    def add_file_message(self, sender: str, file_name: str, message_id: int, sent_at: str, me: bool = False):
+        """
+        Append a file message widget to the chat panel.
+        """
         widget = FileMessageWidget(sender, file_name, message_id, sent_at, me=me)
         widget.setMaximumWidth(min(500, int(self.width() * 0.65)))
 
@@ -378,12 +428,21 @@ class ChatPanel(QtWidgets.QWidget):
         self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
 
     def _send_clicked(self):
+        """
+        Handle the send button click or Return key press.
+        Invokes :attr:`send_callback` with the current chat ID and input text,
+        then clears the input field.
+        """
         text = self.message_input.text().strip()
         if text and self.send_callback and self.current_chat_id is not None:
             self.send_callback(self.current_chat_id, text)
             self.message_input.clear()
 
     def _send_file_clicked(self):
+        """
+        Open a file picker dialog and send the selected file to the server as base64-encoded data.
+        Shows a warning if no chat is active or if the file cannot be read.
+        """
         if self.current_chat_id is None:
             QtWidgets.QMessageBox.warning(self, "Error", "Open a chat first")
             return
@@ -406,7 +465,10 @@ class ChatPanel(QtWidgets.QWidget):
 class NewChatWindow(QtWidgets.QWidget):
     chat_created = QtCore.Signal(dict)
 
-    def __init__(self, all_users, owner_username):
+    def __init__(self, all_users: list, owner_username: str):
+        """
+        A dialog window for creating a new group chat.
+        """
         super().__init__()
         self.setWindowTitle("Create New Chat")
         self.setFixedSize(400, 500)
@@ -444,6 +506,10 @@ class NewChatWindow(QtWidgets.QWidget):
         layout.addWidget(self.create_btn)
 
     def update_user_list(self):
+        """
+        Refresh the user list widget to match the current search filter.
+        Excludes the owner's own username and performs a case-insensitive substring match.
+        """
         search_text = self.search_input.text().lower()
         self.user_list_widget.clear()
 
@@ -457,6 +523,10 @@ class NewChatWindow(QtWidgets.QWidget):
                 self.user_list_widget.addItem(item)
 
     def create_chat(self):
+        """
+        Validate the chat name and selected users, then send a create_chat request to the server.
+        Shows a warning dialog if the name is empty or no users are selected.
+        """
         chat_name = self.name_input.text().strip()
         if not chat_name:
             QtWidgets.QMessageBox.warning(self, "Error", "Please enter a chat name")
@@ -489,6 +559,9 @@ class NewChatWindow(QtWidgets.QWidget):
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
+        """
+        The main application window composed of :class:`LeftPanel` and :class:`ChatPanel`.
+        """
         super().__init__()
         self.screen_res = QtGui.QScreen.availableSize(QtGui.QGuiApplication.primaryScreen())
         self.setMinimumSize(700, 800)
@@ -514,7 +587,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if isinstance(item, ChatItem):
                 item.mousePressEvent = lambda e, chat_id=item.chat_id: self.open_chat(chat_id)
 
-    def send_message_to_server(self, chat_id, content):
+    def send_message_to_server(self, chat_id: int, content: str):
+        """
+        Send a text message to the server for the specified chat.
+        """
         if not s:
             print("No server connection!")
             return
@@ -526,7 +602,10 @@ class MainWindow(QtWidgets.QMainWindow):
             "content": content
         })
 
-    def open_chat(self, chat_id):
+    def open_chat(self, chat_id: int):
+        """
+        Open the specified chat in the chat panel and request its messages from the server.
+        """
         self.chat_panel.open_chat(chat_id)
         send_json(s, {"type": "open_chat", "chat_id": chat_id})
 
@@ -534,7 +613,10 @@ class LoginWindow(QtWidgets.QWidget):
     login_success = QtCore.Signal(str)
     login_error = QtCore.Signal(str) 
 
-    def __init__(self, s):
+    def __init__(self, s: socket.socket):
+        """
+        The login/register window presented after a successful server connection.
+        """
         super().__init__()
         self.s = s
         self.setFixedSize(400, 300)
@@ -608,6 +690,10 @@ class LoginWindow(QtWidgets.QWidget):
         self.register_btn.clicked.connect(self.attempt_register)
 
     def attempt_login(self):
+        """
+        Read the username and password fields and send a login request to the server.
+        Shows a warning dialog if either field is empty.
+        """
         global username
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
@@ -618,6 +704,10 @@ class LoginWindow(QtWidgets.QWidget):
         send_json(self.s, {"type": "login", "username": username, "password": password})
 
     def attempt_register(self):
+        """
+        Read the username and password fields and send a register request to the server.
+        Shows a warning dialog if either field is empty.
+        """
         global username
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
@@ -629,7 +719,12 @@ class LoginWindow(QtWidgets.QWidget):
 
 class ConnectWindow(QtWidgets.QWidget):
     connected = QtCore.Signal(socket.socket)
+
     def __init__(self):
+        """
+        The initial window that prompts the user for a server IP and port before connecting.
+        Emits :attr:`connected` with the established socket on success.
+        """
         super().__init__()
         self.setFixedSize(400, 300)
         self.setWindowTitle("Connect to Server")
@@ -686,6 +781,11 @@ class ConnectWindow(QtWidgets.QWidget):
         self.connect_btn.clicked.connect(self.__attempt_connect__)
 
     def __attempt_connect__(self):
+        """
+        Validate the IP and port inputs, attempt a TCP connection to the server,
+        and emit :attr:`connected` with the socket on success.
+        Shows a warning dialog on invalid input or connection failure.
+        """
         ip = self.ip_input.text().strip()
         port_text = self.port_input.text().strip()
         if not ip or not port_text:
@@ -708,17 +808,23 @@ class ConnectWindow(QtWidgets.QWidget):
         self.connected.emit(s)
         self.close()
 
-def send_json(socket, message):
-        try:
-            data = json.dumps(message).encode()
-            socket.sendall(len(data).to_bytes(4, "big"))
-            socket.sendall(data)
-        except Exception as e:
-            print(f"Error sending json to server - {e}")
-            return False
-        return True
+def send_json(socket: socket.socket, message: dict) -> bool:
+    """
+    Serialise *message* to JSON and send it over *socket* with a 4-byte big-endian length prefix.
+    """
+    try:
+        data = json.dumps(message).encode()
+        socket.sendall(len(data).to_bytes(4, "big"))
+        socket.sendall(data)
+    except Exception as e:
+        print(f"Error sending json to server - {e}")
+        return False
+    return True
 
-def recv_json(socket):
+def recv_json(socket: socket.socket) -> dict | None:
+    """
+    Receive a length-prefixed JSON message from *socket* and return it as a dictionary.
+    """
     try:
         length_bytes = socket.recv(4)
         length = int.from_bytes(length_bytes, "big")
@@ -733,12 +839,20 @@ def recv_json(socket):
         print(f"Error recieving message from server - {e}")
 
 def clear_console():
+    """
+    Clear the terminal console using the appropriate command for the current OS.
+    """
     if os.name == 'nt':
         os.system('cls')
     else:
         os.system('clear')
 
 def listener():
+    """
+    Background thread target that continuously receives messages from the server
+    and emits the appropriate :data:`app_signals` for each message type.
+    Runs until the connection is lost or an unrecoverable error occurs.
+    """
     while True:
         try:
             msg = recv_json(s)
@@ -808,7 +922,10 @@ def listener():
         except Exception as e:
             print("Error receiving message:", e)
 
-def _handle_download(file_name, file_data):
+def _handle_download(file_name: str, file_data: str):
+    """
+    Prompt the user for a save location and write the downloaded file to disk.
+    """
     save_path, _ = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", file_name)
 
     if not save_path:
@@ -820,7 +937,10 @@ def _handle_download(file_name, file_data):
     except Exception as e:
         QtWidgets.QMessageBox.warning(None, "Error", f"Failed to save file: {e}")
 
-def _on_chat_opened(chat_id, msgs):
+def _on_chat_opened(chat_id: int, msgs: list):
+    """
+    Populate the chat panel with historical messages when a chat is opened.
+    """
     main_window.chat_panel.open_chat(chat_id)
 
     for m in msgs:
@@ -830,7 +950,11 @@ def _on_chat_opened(chat_id, msgs):
         else:
             main_window.chat_panel.add_message(m["sender"], m["content"] or "", me)
 
-def handle_login_success(user):
+def handle_login_success(user: str):
+    """
+    Initialise the main window after a successful login, connect all application signals,
+    and request the user's chat list from the server.
+    """
     global username, main_window
     username = user
     main_window = MainWindow()
@@ -862,6 +986,10 @@ def handle_login_success(user):
     send_json(s, {"type": "get_chats", "user": username})
 
 def do_logout():
+    """
+    Tear down the current session: disconnect all signals, close the main window,
+    close the server socket, and show the :class:`ConnectWindow` to start a new session.
+    """
     global main_window, username, current_chat_id, s, connect_window
 
     username = None
@@ -911,7 +1039,11 @@ def do_logout():
 
     s = None
 
-def start_login(connected_socket):
+def start_login(connected_socket: socket.socket):
+    """
+    Store the connected socket, start the background listener thread,
+    and show the :class:`LoginWindow`.
+    """
     global s, login_window, main_window
     s = connected_socket
     threading.Thread(target=listener, daemon=True).start()
