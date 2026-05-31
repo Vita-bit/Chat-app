@@ -44,7 +44,7 @@ class ChatItem(QtWidgets.QFrame):
         message_font = QtGui.QFont()
         message_font.setPointSize(9)
         self.message_label.setFont(message_font)
-        self.message_label.setStyleSheet("color: hsl(0,0,100);")
+        self.message_label.setStyleSheet("color: hsl(0,0,100); font-weight: 500;")
         self.message_label.setWordWrap(True)
 
         text_layout.addWidget(self.name_label)
@@ -77,8 +77,8 @@ class FileMessageWidget(QtWidgets.QFrame):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
-        name_label = QtWidgets.QLabel(f"<b>{sender}</b>")
-        name_label.setStyleSheet("color: white;")
+        name_label = QtWidgets.QLabel(sender)
+        name_label.setStyleSheet("color: white; font-weight: bold; font-size: 15px;")
         layout.addWidget(name_label)
 
         file_label = QtWidgets.QLabel(file_name)
@@ -86,8 +86,8 @@ class FileMessageWidget(QtWidgets.QFrame):
         file_label.setWordWrap(True)
         layout.addWidget(file_label)
 
-        time_label = QtWidgets.QLabel(f"<small>{sent_at}</small>")
-        time_label.setStyleSheet("color: rgba(255,255,255,0.6);")
+        time_label = QtWidgets.QLabel(sent_at)
+        time_label.setStyleSheet("color: rgba(255,255,255,0.6); font-weight: 300; font-size: 10px;")
         layout.addWidget(time_label)
 
         download_btn = QtWidgets.QPushButton("Download")
@@ -102,7 +102,11 @@ class FileMessageWidget(QtWidgets.QFrame):
         }))
         layout.addWidget(download_btn)
 
-        bg = "#2e86de" if me else "hsl(0,0,30)"
+        if me:
+            bg = "hsl(58,73,53)"
+        else:
+            bg = "hsl(0,0,30)"
+
         self.setStyleSheet(f"QFrame {{ background-color:{bg}; border-radius:8px; margin:2px; }}")
 
 class PasswordChangeWindow(QtWidgets.QWidget):
@@ -127,15 +131,15 @@ class PasswordChangeWindow(QtWidgets.QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
 
-        self.old_pw_input = QtWidgets.QLineEdit()
-        self.old_pw_input.setPlaceholderText("Old Password")
-        self.old_pw_input.setEchoMode(QtWidgets.QLineEdit.Password)
-        layout.addWidget(self.old_pw_input)
+        self.old_pass_input = QtWidgets.QLineEdit()
+        self.old_pass_input.setPlaceholderText("Old Password")
+        self.old_pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addWidget(self.old_pass_input)
 
-        self.new_pw_input = QtWidgets.QLineEdit()
-        self.new_pw_input.setPlaceholderText("New Password")
-        self.new_pw_input.setEchoMode(QtWidgets.QLineEdit.Password)
-        layout.addWidget(self.new_pw_input)
+        self.new_pass_input = QtWidgets.QLineEdit()
+        self.new_pass_input.setPlaceholderText("New Password")
+        self.new_pass_input.setEchoMode(QtWidgets.QLineEdit.Password)
+        layout.addWidget(self.new_pass_input)
 
         self.confirm_btn = QtWidgets.QPushButton("Confirm")
         self.confirm_btn.clicked.connect(self.change_password)
@@ -149,8 +153,9 @@ class PasswordChangeWindow(QtWidgets.QWidget):
         old_pw = self.old_pw_input.text().strip()
         new_pw = self.new_pw_input.text().strip()
         if not old_pw or not new_pw:
-            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in both fields")
+            QtWidgets.QMessageBox.warning(self, "Error", "Please fill in both fields.")
             return
+        
         send_json(s, {
             "type": "change_password",
             "username": self.username,
@@ -338,6 +343,7 @@ class ChatPanel(QtWidgets.QWidget):
 
         input_layout = QtWidgets.QHBoxLayout()
         self.message_input = QtWidgets.QLineEdit()
+        self.message_input.setFixedHeight(36)
         self.message_input.returnPressed.connect(self._send_clicked)
         self.message_input.setPlaceholderText("Type a message...")
 
@@ -588,6 +594,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not s:
             print("No server connection!")
             return
+        
         send_json(s, {
             "type": "msg",
             "chat_id": chat_id,
@@ -909,10 +916,6 @@ def listener():
                 file_data = msg.get("file_data")
                 app_signals.file_download_ready.emit(file_name, file_data)
 
-            elif msg_type == "closed_chat":
-                clear_console()
-                print("Successfully closed chat")
-
             elif msg_type == "disconnect":
                 print(f"Disconnected from the server - {msg.get('content')}")
 
@@ -924,11 +927,13 @@ def _handle_download(file_name: str, file_data: str):
     Prompt the user for a save location and write the downloaded file to disk.
     """
     save_path, _ = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", file_name)
+
     if not save_path:
         return
     try:
         with open(save_path, "wb") as f:
             f.write(base64.b64decode(file_data))
+
     except Exception as e:
         QtWidgets.QMessageBox.warning(None, "Error", f"Failed to save file: {e}")
 
@@ -937,6 +942,7 @@ def _on_chat_opened(chat_id: int, msgs: list):
     Populate the chat panel with historical messages when a chat is opened.
     """
     main_window.chat_panel.open_chat(chat_id)
+
     for m in msgs:
         me = m["sender"] == username
         if m.get("file_name"):
@@ -956,17 +962,19 @@ def handle_login_success(user: str):
     main_window.left_panel.username_label.setText(username)
     main_window.show()
     login_window.close()
+
     app_signals.chats_received.connect(main_window.left_panel.update_chats)
-    app_signals.chat_created.connect(lambda name, last, cid: main_window.left_panel.add_chat(name, last, cid))
-
+    app_signals.chat_created.connect(
+        lambda name, last, cid: main_window.left_panel.add_chat(name, last, cid)
+    )
     app_signals.chat_opened.connect(_on_chat_opened)
-
-    app_signals.new_message.connect(lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me))
+    app_signals.new_message.connect(
+        lambda sender, content, me: main_window.chat_panel.add_message(sender, content, me)
+    )
     app_signals.file_received.connect(
         lambda sender, fname, mid, sat, me: main_window.chat_panel.add_file_message(sender, fname, mid, sat, me)
     )
     app_signals.file_download_ready.connect(_handle_download)
-
     app_signals.server_message.connect(lambda level, content:
         QtWidgets.QMessageBox.warning(main_window, "Success" if level == "info" else "Error", content)
     ) 
@@ -987,20 +995,34 @@ def do_logout():
     username = None
     current_chat_id = None
 
-    try: app_signals.chats_received.disconnect()
-    except: pass
-    try: app_signals.chat_created.disconnect()
-    except: pass
-    try: app_signals.chat_opened.disconnect()
-    except: pass
-    try: app_signals.new_message.disconnect()
-    except: pass
-    try: app_signals.file_received.disconnect()
-    except: pass
-    try: app_signals.file_download_ready.disconnect()
-    except: pass
-    try: app_signals.server_message.disconnect()
-    except: pass
+    try:
+        app_signals.chats_received.disconnect()
+    except:
+        pass
+    try:
+        app_signals.chat_created.disconnect()
+    except:
+        pass
+    try:
+        app_signals.chat_opened.disconnect()
+    except:
+        pass
+    try:
+        app_signals.new_message.disconnect()
+    except:
+        pass
+    try:
+        app_signals.file_received.disconnect()
+    except:
+        pass
+    try:
+        app_signals.file_download_ready.disconnect()
+    except:
+        pass
+    try:
+        app_signals.server_message.disconnect()
+    except:
+        pass
 
     connect_window = ConnectWindow()
     connect_window.connected.connect(start_login)
@@ -1014,6 +1036,7 @@ def do_logout():
         s.close()
     except Exception:
         pass
+
     s = None
 
 def start_login(connected_socket: socket.socket):
