@@ -76,10 +76,10 @@ class FileMessageWidget(QtWidgets.QFrame):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
+        layout.addWidget(name_label)
 
         name_label = QtWidgets.QLabel(sender)
         name_label.setStyleSheet("color: white; font-weight: bold; font-size: 15px;")
-        layout.addWidget(name_label)
 
         file_label = QtWidgets.QLabel(file_name)
         file_label.setStyleSheet("color: white;")
@@ -197,15 +197,13 @@ class LeftPanel(QtWidgets.QWidget):
         main_layout.addLayout(top_row)
 
         self.new_chat_btn.clicked.connect(self.open_new_chat_window)
+        self.chats_container = QtWidgets.QWidget()
 
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.scroll_area.setStyleSheet("border: none;")
-
-        self.chats_container = QtWidgets.QWidget()
-
         self.scroll_layout = QtWidgets.QVBoxLayout(self.chats_container)
         self.scroll_layout.setContentsMargins(0,0,0,0)
         self.scroll_layout.setSpacing(5)

@@ -230,14 +230,14 @@ def msg(user: str, content: str):
         print(f"Error sending message for {user}: {e}")
         send_json(clients[user], {"type": "error", "content": "An error occurred while sending the message"})
 
-def receive_file(user: str, file_name: str, file_data_b64: str, chat_id: int):
+def receive_file(user: str, file_name: str, file_data_b64: str, chat_id: int) -> bool:
     """
     Decode and save an uploaded file to disk, record it in the database,
     and notify all members of the chat.
     """
     if chat_id is None:
         send_json(clients[user], {"type": "error", "content": "No chat selected"})
-        return
+        return False
     base, ext = os.path.splitext(file_name)
     unique_name = f"{base}_{uuid.uuid4().hex}{ext}"
     file_path = os.path.join("files", unique_name)
@@ -252,7 +252,7 @@ def receive_file(user: str, file_name: str, file_data_b64: str, chat_id: int):
         cur.execute("select sent_at, id from messages where id = ?", (cur.lastrowid,))
         row = cur.fetchone()
         if row is None:
-            return
+            return False
         sent_at, message_id = row
         cur.execute("select u.username from chat_users cu join users u on cu.user_id = u.id where cu.chat_id = ?", (chat_id,))
         chat_users = [r[0] for r in cur.fetchall()]
@@ -263,8 +263,9 @@ def receive_file(user: str, file_name: str, file_data_b64: str, chat_id: int):
         file_dict = {"type": "new_file", "chat_id": chat_id, "chat_name": chat_name, "sender": user, "file_name": file_name, "message_id": message_id, "content": None, "sent_at": sent_at}
         if member in clients:
             send_json(clients[member], file_dict)
+    return True
 
-def download_file(user: str, message_id: int, sock: socket.socket, chat_id: int):
+def download_file(user: str, message_id: int, sock: socket.socket, chat_id: int) -> bool:
     """
     Read a previously uploaded file from disk and send its base64-encoded content
     to the requesting user's socket.
@@ -272,36 +273,38 @@ def download_file(user: str, message_id: int, sock: socket.socket, chat_id: int)
     try:
         if chat_id is None:
             send_json(clients[user], {"type": "error", "content": "No chat selected"})
-            return
+            return False
         with sqlite3.connect("chatapp.db") as dbconn:
             cur = dbconn.cursor()
             cur.execute("select id from users where username = ?", (user,))
             user_row = cur.fetchone()
             if not user_row:
                 send_json(sock, {"type": "error", "content": "Invalid user"})
-                return
+                return False
             user_id = user_row[0]
             cur.execute("select 1 from chat_users where chat_id = ? and user_id = ?", (chat_id, user_id))
             if not cur.fetchone():
                 send_json(sock, {"type": "error", "content": "You are not in this chat"})
-                return
+                return False
             cur.execute("select file_name, file_path from messages where id = ?", (message_id,))
             row = cur.fetchone()
             if not row:
                 send_json(sock, {"type": "error", "content": f"No file found with id {message_id}"})
-                return
+                return False
             file_name, file_path = row
             if not file_path or not os.path.exists(file_path):
                 send_json(sock, {"type": "error", "content": "File not found on server"})
-                return
+                return False
             with open(file_path, "rb") as f:
                 file_data = base64.b64encode(f.read()).decode()
             send_json(sock, {"type": "file_download", "file_name": file_name, "file_data": file_data})
+            return True
     except Exception as e:
         print(f"Error sending file for user {user}: {e}")
         send_json(sock, {"type": "error", "content": "Failed to send file"})
+        return False
 
-def change_password(username: str, old_password: str, new_password: str, conn: socket.socket):
+def change_password(username: str, old_password: str, new_password: str, conn: socket.socket) -> bool:
     """
     Verify the user's current password and update it to the new value in the database.
     """
@@ -314,16 +317,17 @@ def change_password(username: str, old_password: str, new_password: str, conn: s
             row = cur.fetchone()
             if not row:
                 send_json(conn, {"type": "error", "content": "User does not exist"})
-                return
+                return False
 
             current_password = row[0]
             if current_password != old_password:
                 send_json(conn, {"type": "error", "content": "Old password is incorrect"})
-                return
+                return False
 
             cur.execute("update users set password = ? where username = ?", (new_password, username))
             dbconn.commit()
             send_json(conn, {"type": "success", "content": "Password changed successfully"})
+            return True
 
     except Exception as e:
         print(f"Error changing password for {username}: {e}")
@@ -472,6 +476,18 @@ def handle_client(conn: socket.socket, addr: tuple):
         conn.close()
         print(f"Client {username} disconnected")
 
+def get_private_ip() -> str:
+    """
+    Determine the machine's private (LAN) IP address by opening a temporary UDP socket.
+    """
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    finally:
+        s.close()
+    return ip
+
 if __name__ == "__main__":
     PORT = input("Enter the port for the server to run on: ")
     HOST = "0.0.0.0"
@@ -485,17 +501,6 @@ if __name__ == "__main__":
 
     try:
         response = requests.get("https://api.ipify.org")
-        def get_private_ip() -> str:
-            """
-            Determine the machine's private (LAN) IP address by opening a temporary UDP socket.
-            """
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                s.connect(("8.8.8.8", 80))
-                ip = s.getsockname()[0]
-            finally:
-                s.close()
-            return ip
         print("Your private IP is:", get_private_ip())
         print(f"Your public IP is: {response.text}")
         print(f"Your server is running on port: {PORT}")
