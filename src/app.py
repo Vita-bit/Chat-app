@@ -205,7 +205,7 @@ class LeftPanel(QtWidgets.QWidget):
         self.scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.scroll_area.setStyleSheet("border: none;")
         self.scroll_layout = QtWidgets.QVBoxLayout(self.chats_container)
-        self.scroll_layout.setContentsMargins(0,0,0,0)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
         self.scroll_layout.setSpacing(5)
         self.scroll_layout.addStretch()
         self.scroll_area.setWidget(self.chats_container)
@@ -217,14 +217,17 @@ class LeftPanel(QtWidgets.QWidget):
         bottom_layout = QtWidgets.QHBoxLayout(self.bottom_bar)
         bottom_layout.setContentsMargins(10, 5, 10, 5)
 
-        self.username_label = QtWidgets.QLabel(username if username else "Username")
+        if username:
+            self.username_label = QtWidgets.QLabel(username)
+        else:
+            self.username_label = QtWidgets.QLabel("Username")
         self.username_label.setStyleSheet("font-weight: bold; font-size: 12pt; padding-left: 8px;")
         self.username_label.setMinimumWidth(50)
         self.username_label.setMaximumWidth(130)
         self.username_label.setAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft)
         self.username_label.setText(self.username_label.fontMetrics().elidedText(username, QtCore.Qt.ElideRight, 200))
-        bottom_layout.addWidget(self.username_label)
 
+        bottom_layout.addWidget(self.username_label)
         bottom_layout.addStretch()
 
         self.menu_btn = QtWidgets.QPushButton("☰")
@@ -382,11 +385,10 @@ class ChatPanel(QtWidgets.QWidget):
         bubble = QtWidgets.QLabel(f"<b>{sender}</b><br>{content}")
         bubble.setWordWrap(True)
         bubble.setMaximumWidth(min(500, int(self.width() * 0.65)))
-        bubble.setStyleSheet(
-            "padding:8px; border-radius:8px; margin:2px; background-color: #2e86de; color: white;"
-            if me else
-            "padding:8px; border-radius:8px; margin:2px; background-color: hsl(0,0,30); color: white;"
-        )
+        if me:
+            bubble.setStyleSheet("padding:8px; border-radius:8px; margin:2px; background-color: #2e86de; color: white;")
+        else:
+            bubble.setStyleSheet("padding:8px; border-radius:8px; margin:2px; background-color: hsl(0,0,30); color: white;")
 
         row = QtWidgets.QHBoxLayout()
         row.setContentsMargins(4, 2, 4, 2)
