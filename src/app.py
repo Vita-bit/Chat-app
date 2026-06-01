@@ -461,6 +461,7 @@ class ChatPanel(QtWidgets.QWidget):
             })
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to send file: {e}")
+        return
 
 class NewChatWindow(QtWidgets.QWidget):
     chat_created = QtCore.Signal(dict)
