@@ -6,6 +6,8 @@ Basic python chatting app where messages are sent to a server you can host anywh
 - Basic chat with messages
 - Sending files
 - PySide6 GUI
+- Sending voice messages
+- Viewing images inline in the chat
 
 ## Used libraries:
 - PySide6
