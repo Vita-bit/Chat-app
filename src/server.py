@@ -130,12 +130,15 @@ def create_chat(users: list, creator: str, conn: socket.socket, chat_name: str):
         cur.execute("insert into chats (name) values (?)", (chat_name,))
         chat_id = cur.lastrowid
 
+        added = set()
         for user_id in user_ids:
-            cur.execute("insert into chat_users (chat_id, user_id) values (?, ?)", (chat_id, user_id))
+            if user_id not in added:
+                cur.execute("insert into chat_users (chat_id, user_id) values (?, ?)", (chat_id, user_id))
+                added.add(user_id)
 
         cur.execute("select id from users where username = ?", (creator,))
         creator_id = cur.fetchone()[0]
-        if creator_id not in user_ids:
+        if creator_id not in added:
             cur.execute("insert into chat_users (chat_id, user_id) values (?, ?)", (chat_id, creator_id))
 
         db.commit()
@@ -188,7 +191,12 @@ def get_chats(username: str):
     send_json(clients[username], {"type": "chats_got", "chats": chats})
 
 
-def open_chat(chat_id: int, username: str):
+def open_chat(chat_id: int, username: str, offset: int = 0):
+    """
+    Send up to 50 messages for the given chat, skipping `offset` most-recent ones.
+    The client passes offset=0 for a fresh open and offset=N when paginating up.
+    Messages are returned oldest-first within the page.
+    """
     with sqlite3.connect("chatapp.db") as db:
         cur = db.cursor()
 
@@ -216,8 +224,8 @@ def open_chat(chat_id: int, username: str):
             join users u on m.sender_id = u.id
             where m.chat_id = ?
             order by m.sent_at desc
-            limit 50
-        """, (chat_id,))
+            limit 50 offset ?
+        """, (chat_id, offset))
 
         messages = [
             {
@@ -225,15 +233,21 @@ def open_chat(chat_id: int, username: str):
                 "content": content,
                 "file_name": file_name,
                 "message_id": msg_id,
-                "sent_at": sent_at
+                "sent_at": sent_at,
             }
             for msg_id, sender, content, file_name, sent_at in reversed(cur.fetchall())
         ]
 
     with current_chats_lock:
-        current_chats[username] = chat_id
+        if offset == 0:
+            current_chats[username] = chat_id
 
-    send_json(clients[username], {"type": "chat_open", "chat_id": chat_id, "messages": messages})
+    send_json(clients[username], {
+        "type": "chat_open",
+        "chat_id": chat_id,
+        "offset": offset,
+        "messages": messages,
+    })
 
 
 def get_users(requesting_user: str):
@@ -247,8 +261,6 @@ def get_users(requesting_user: str):
 
     if conn:
         send_json(conn, {"type": "users_got", "users": users})
-    else:
-        print(f"connection for {requesting_user} not found when getting users")
 
 
 def send_message(username: str, content: str):
@@ -290,7 +302,7 @@ def send_message(username: str, content: str):
             "chat_name": chat_name,
             "sender": username,
             "content": saved_content,
-            "sent_at": sent_at
+            "sent_at": sent_at,
         }
 
         with clients_lock:
@@ -308,12 +320,20 @@ def receive_file(username: str, file_name: str, file_data_b64: str, chat_id: int
         send_json(clients[username], {"type": "error", "content": "no active chat"})
         return False
 
+    if not file_name or not file_data_b64:
+        send_json(clients[username], {"type": "error", "content": "missing file data"})
+        return False
+
     base, ext = os.path.splitext(file_name)
     unique_name = f"{base}_{uuid.uuid4().hex}{ext}"
     file_path = os.path.join("files", unique_name)
 
-    with open(file_path, "wb") as f:
-        f.write(base64.b64decode(file_data_b64))
+    try:
+        with open(file_path, "wb") as f:
+            f.write(base64.b64decode(file_data_b64))
+    except Exception as e:
+        send_json(clients[username], {"type": "error", "content": f"failed to save file: {e}"})
+        return False
 
     with sqlite3.connect("chatapp.db") as db:
         cur = db.cursor()
@@ -344,7 +364,7 @@ def receive_file(username: str, file_name: str, file_data_b64: str, chat_id: int
         "file_name": file_name,
         "message_id": message_id,
         "content": None,
-        "sent_at": sent_at
+        "sent_at": sent_at,
     })
     return True
 
@@ -352,7 +372,7 @@ def receive_file(username: str, file_name: str, file_data_b64: str, chat_id: int
 def download_file(username: str, message_id: int, sock: socket.socket, chat_id: int) -> bool:
     try:
         if chat_id is None:
-            send_json(clients[username], {"type": "error", "content": "no active chat"})
+            send_json(sock, {"type": "error", "content": "no active chat"})
             return False
 
         with sqlite3.connect("chatapp.db") as db:
@@ -491,7 +511,11 @@ def handle_client(conn: socket.socket, addr: tuple):
                 get_chats(message.get("user"))
 
             elif msg_type == "open_chat":
-                open_chat(message.get("chat_id"), username)
+                open_chat(
+                    message.get("chat_id"),
+                    username,
+                    message.get("offset", 0),
+                )
 
             elif msg_type == "msg":
                 send_message(username, message.get("content"))
@@ -505,19 +529,28 @@ def handle_client(conn: socket.socket, addr: tuple):
                 send_json(clients[username], {"type": "closed_chat"})
 
             elif msg_type == "change_password":
-                change_password(username, message.get("old_password"), message.get("new_password"), clients[username])
+                change_password(
+                    username,
+                    message.get("old_password"),
+                    message.get("new_password"),
+                    clients[username]
+                )
 
             elif msg_type == "send_file":
-                file_name = message.get("file_name")
-                file_data = message.get("file_data")
-                chat_id = message.get("chat_id")
-                if not file_name or not file_data:
-                    send_json(clients[username], {"type": "error", "content": "missing file data"})
-                    continue
-                receive_file(username, file_name, file_data, chat_id)
+                receive_file(
+                    username,
+                    message.get("file_name"),
+                    message.get("file_data"),
+                    message.get("chat_id"),
+                )
 
             elif msg_type == "request_download":
-                download_file(username, message.get("file_id"), clients[username], message.get("chat_id"))
+                download_file(
+                    username,
+                    message.get("file_id"),
+                    clients[username],
+                    message.get("chat_id"),
+                )
 
             elif msg_type == "logout":
                 with clients_lock:
