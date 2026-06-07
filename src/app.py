@@ -510,9 +510,6 @@ class SettingsWindow(QtWidgets.QDialog):
 
         beh_group = QtWidgets.QGroupBox("Behaviour")
         bl = QtWidgets.QVBoxLayout(beh_group)
-        self._enter_check = QtWidgets.QCheckBox("Send message on Enter")
-        self._enter_check.setChecked(s["send_on_enter"])
-        bl.addWidget(self._enter_check)
         self._ts_check = QtWidgets.QCheckBox("Show timestamps on messages")
         self._ts_check.setChecked(s["show_timestamps"])
         bl.addWidget(self._ts_check)
